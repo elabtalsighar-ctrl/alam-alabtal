@@ -148,7 +148,7 @@ const DEFAULT_SETTINGS = {
   delivery_info: 'التوصيل متوفر لمختلف ولايات الجزائر. تكلفة التوصيل 350 دج لمعظم الولايات.',
   delivery_time: 'من 2 إلى 5 أيام عمل',
   low_stock_threshold: '5',
-  shipping_free_over: '8000',
+  shipping_free_over: '0',
   google_sheets_url: '',
   ecotrack_token: '',
   ecotrack_enabled: '0',
