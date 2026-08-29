@@ -1,0 +1,16 @@
+{
+  "name": "alam-alabtal-al-sighar",
+  "version": "1.0.0",
+  "private": true,
+  "description": "عالم الأبطال الصغار - E-commerce store for children's products in Algeria",
+  "scripts": {
+    "install:all": "npm install && npm --prefix web install && npm --prefix server install",
+    "dev": "concurrently \"npm --prefix server run dev\" \"npm --prefix web run dev\"",
+    "build": "npm --prefix web run build && npm --prefix server run build",
+    "start": "node server/index.js",
+    "seed": "node server/seed.js run "
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.0"
+  }
+}

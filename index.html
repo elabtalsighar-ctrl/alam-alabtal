@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="عالم الأبطال الصغار - بدلة شرطة الأطفال." />
+    <title>عالم الأبطال الصغار | بدلة شرطة الأطفال</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Baloo+Bhaijaan+2:wght@400;500;600;700;800&family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="announcement" id="announcementText">توصيل إلى جميع الولايات الجزائرية <span>•</span> الدفع عند الاستلام متاح</div>
+
+    <header class="site-header">
+      <a class="brand" href="#home" aria-label="عالم الأبطال الصغار">
+        <span class="brand-mark">★</span>
+        <span>عالم <b>الأبطال</b><small>الصغار</small></span>
+      </a>
+      <div class="lang-switcher" id="langSwitcher" aria-label="اختيار اللغة">
+        <button type="button" data-lang="ar" class="active">AR</button>
+        <button type="button" data-lang="fr">FR</button>
+        <button type="button" data-lang="en">EN</button>
+      </div>
+      <button class="cart-button" id="openCart" aria-label="فتح السلة"><span id="cartLabel">السلة</span> <b id="cartCount">0</b> 🛒</button>
+    </header>
+
+    <main id="home" class="page">
+      <section class="product-hero">
+        <div class="product-visual" aria-label="صورة بدلة شرطة الأطفال">
+          <div class="badge">منتج واحد فقط</div>
+          <img class="product-photo" src="product.jpg" alt="بدلة شرطة الأطفال" onerror="this.style.display='none';document.getElementById('photoFallback').style.display='block';" />
+          <div id="photoFallback" class="photo-fallback">
+            <div class="shirt"></div>
+            <div class="shirt-shadow"></div>
+            <div class="badge-mark">شرطة</div>
+            <div class="cap"></div>
+            <div class="pants"></div>
+            <div class="accessory-case"></div>
+            <div class="belt"></div>
+            <div class="preview-note">ضع صورة المنتج باسم `product.jpg` داخل نفس المجلد ليتم عرضها هنا</div>
+          </div>
+        </div>
+
+        <div class="product-copy">
+          <p class="eyebrow" id="storeName">عالم الأبطال الصغار</p>
+          <h1 id="productTitle">بدلة شرطة الأطفال</h1>
+          <p class="subtitle" id="productSubtitle">بدلة أنيقة ومحبوبة للأطفال، مناسبة للحفلات، التنكر، والتصوير.</p>
+
+          <div class="price-box">
+            <span class="price-label" id="priceLabel">السعر</span>
+            <strong>4,200 د.ج</strong>
+          </div>
+
+          <div class="info-grid">
+            <div><span id="deliveryLabel">التوصيل</span><strong id="deliveryValue">جميع الولايات</strong></div>
+            <div><span id="paymentLabel">الدفع</span><strong id="paymentValue">عند الاستلام</strong></div>
+            <div><span id="itemsLabel">المرفقات</span><strong id="itemsValue">البدلة + القبعة</strong></div>
+            <div><span id="categoryLabel">الفئة</span><strong id="categoryValue">ملابس تنكرية</strong></div>
+          </div>
+
+          <section class="selector-block">
+            <div class="block-head">
+              <h2 id="sizeTitle">اختر المقاس</h2>
+              <span id="selectedSizeLabel">لم يتم اختيار مقاس</span>
+            </div>
+            <div class="size-grid" id="sizeGrid"></div>
+          </section>
+
+          <div class="actions">
+            <button class="primary-button" id="addToCart">أضف إلى السلة</button>
+            <a class="secondary-button" id="whatsappBtn" href="https://wa.me/" target="_blank" rel="noreferrer">اطلب عبر واتساب</a>
+          </div>
+
+          <p class="note" id="sizeNote">المقاسات المتوفرة من 2 إلى 10. اختر المقاس ثم أضف المنتج إلى السلة.</p>
+        </div>
+      </section>
+    </main>
+
+    <aside class="cart-drawer" id="cartDrawer" aria-label="سلة التسوق" aria-hidden="true">
+      <div class="cart-head">
+        <h2 id="cartTitle">سلة المشتريات</h2>
+        <button id="closeCart" aria-label="إغلاق">×</button>
+      </div>
+      <div id="cartItems" class="cart-items"></div>
+      <form class="checkout-form" id="checkoutForm">
+        <h3 id="customerTitle">بيانات الزبون</h3>
+        <label><span id="fullNameLabel">الاسم الكامل</span> <input id="fullName" type="text" placeholder="الاسم الكامل" required /></label>
+        <label><span id="phoneLabel">رقم الهاتف</span> <input id="phone" type="tel" placeholder="05xxxxxxxx" required /></label>
+        <div class="wilaya-picker">
+          <label for="wilayaButton" id="wilayaLabel">الولاية</label>
+          <button type="button" class="picker-button" id="wilayaButton">اختر الولاية</button>
+          <input id="wilaya" type="hidden" />
+          <div class="wilaya-menu" id="wilayaMenu" hidden>
+            <input id="wilayaSearch" type="search" placeholder="ابحث عن ولايتك" />
+            <div class="wilaya-list" id="wilayaList"></div>
+          </div>
+        </div>
+        <div class="wilaya-picker">
+          <label for="communeButton" id="communeLabel">البلدية</label>
+          <button type="button" class="picker-button" id="communeButton" disabled>اختر البلدية</button>
+          <input id="commune" type="hidden" />
+          <div class="wilaya-menu" id="communeMenu" hidden>
+            <input id="communeSearch" type="search" placeholder="ابحث عن البلدية" />
+            <div class="wilaya-list" id="communeList"></div>
+          </div>
+        </div>
+        <p class="checkout-note" id="checkoutNote">سيتم إرسال الطلب إلى Google Sheets عند إعداد رابط النشر.</p>
+      </form>
+      <div class="cart-footer">
+        <div>
+          <span id="totalLabel">الإجمالي</span>
+          <strong id="cartTotal">0 د.ج</strong>
+        </div>
+        <button class="primary-button checkout" id="checkoutButton" type="submit" form="checkoutForm">إتمام الطلب ←</button>
+      </div>
+    </aside>
+    <div class="overlay" id="overlay"></div>
+
+    <script src="app.js"></script>
+  </body>
+</html>

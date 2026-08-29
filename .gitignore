@@ -1,0 +1,14 @@
+node_modules/
+dist/
+.env
+*.db
+*.db-shm
+*.db-wal
+*.log
+*.pid
+.DS_Store
+Thumbs.db
+server/uploads/
+server/data/
+test.json
+test2.json
