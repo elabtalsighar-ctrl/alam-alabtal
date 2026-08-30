@@ -208,22 +208,22 @@ app.get('/api/ecotrack/fee/:wilaya_id', async (req, res) => {
     let stopDeskFee = null;
     let stopDeskAvailable = false;
 
-    if (Array.isArray(j) && j.length > 0) {
-      const row = j.find(r => String(r.wilaya_id || r.code_wilaya || r.id || '') === wilayaId) || j[0];
+    function parseRow(row) {
+      if (!row) return;
       homeFee = parseFloat(row.tarif || row.homeDeliveryPrice || row.price || row.fee || row.montant || 0);
       stopDeskFee = parseFloat(row.tarif_stopdesk || row.stopDeskPrice || row.stop_desk_price || 0) || null;
       stopDeskAvailable = !!(row.has_stop_desk || row.stop_desk || stopDeskFee);
-    } else if (j && typeof j === 'object' && !Array.isArray(j)) {
-      if (j.data && Array.isArray(j.data)) {
-        const row = j.data.find(r => String(r.wilaya_id || '') === wilayaId) || j.data[0];
-        if (row) {
-          homeFee = parseFloat(row.tarif || row.homeDeliveryPrice || row.price || 0);
-          stopDeskFee = parseFloat(row.tarif_stopdesk || row.stopDeskPrice || 0) || null;
-          stopDeskAvailable = !!(row.has_stop_desk || stopDeskFee);
-        }
-      } else if (j.fees && typeof j.fees === 'object') {
-        homeFee = parseFloat(j.fees[wilayaId] || 0) || null;
+    }
+
+    if (j && typeof j === 'object' && !Array.isArray(j)) {
+      const arr = j.livraison || j.data || (Array.isArray(j) ? j : null);
+      if (Array.isArray(arr)) {
+        const row = arr.find(r => String(r.wilaya_id || '') === wilayaId) || arr[0];
+        parseRow(row);
       }
+    } else if (Array.isArray(j) && j.length > 0) {
+      const row = j.find(r => String(r.wilaya_id || '') === wilayaId) || j[0];
+      parseRow(row);
     }
 
     if (!homeFee || homeFee <= 0) {

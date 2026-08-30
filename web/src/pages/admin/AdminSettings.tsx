@@ -148,21 +148,24 @@ export default function AdminSettings() {
           try{
             const r=await fetch('/api/ecotrack/fees');
             const j=await r.json();
-            // Ecotrack fees format varies: try to extract
             let feesMap: Record<string,string> = {};
-            if(Array.isArray(j)){
-              j.forEach((item:any)=>{
+            const extractFromArr = (arr: any[]) => {
+              arr.forEach((item:any)=>{
                 const code=String(item.wilaya_id || item.code_wilaya || item.id || '');
                 const price=String(item.tarif || item.price || item.fee || item.montant || '400');
                 if(code) feesMap[code]=price;
               });
-            } else if(j.fees){
-              feesMap=j.fees;
-            } else if(j.data && Array.isArray(j.data)){
-              j.data.forEach((item:any)=>{
-                const code=String(item.wilaya_id || '');
-                if(code) feesMap[code]=String(item.price||'400');
-              });
+            };
+            if(Array.isArray(j)){
+              extractFromArr(j);
+            } else if(j && typeof j === 'object') {
+              if(j.livraison && Array.isArray(j.livraison)){
+                extractFromArr(j.livraison);
+              } else if(j.fees){
+                feesMap=j.fees;
+              } else if(j.data && Array.isArray(j.data)){
+                extractFromArr(j.data);
+              }
             }
             if(Object.keys(feesMap).length){
               setForm(f=>({...f, delivery_fees: JSON.stringify(feesMap)}));
