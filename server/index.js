@@ -254,8 +254,9 @@ app.post('/api/ecotrack/fetch-fees', requireAuth, requireAdmin, async (req, res)
     if (Array.isArray(arr)) {
       arr.forEach(item => {
         const code = String(item.wilaya_id || '');
-        const price = String(item.tarif || '0');
-        if (code && price !== '0') feesMap[code] = price;
+        const home = parseFloat(item.tarif || '0');
+        const sd = parseFloat(item.tarif_stopdesk || '0');
+        if (code && home > 0) feesMap[code] = { home: String(home), stop_desk: sd > 0 ? String(sd) : String(home) };
       });
     }
     if (Object.keys(feesMap).length) {
@@ -592,11 +593,20 @@ app.post('/api/orders', orderLimiter, async (req, res) => {
 
     const settings = getSettings();
     let deliveryCost = parseFloat(settings.delivery_pricing || '350');
+    let deliverySource = 'default';
     try {
       const fees = JSON.parse(settings.delivery_fees || '{}');
       const m = String(wilaya || '').match(/\d+/);
       const code = m ? m[0] : '';
-      if (code && fees[code] !== undefined) deliveryCost = parseFloat(fees[code]);
+      if (code && fees[code] !== undefined) {
+        const feeVal = fees[code];
+        if (typeof feeVal === 'object' && feeVal !== null) {
+          deliveryCost = stop_desk ? parseFloat(feeVal.stop_desk || feeVal.home || '350') : parseFloat(feeVal.home || '350');
+        } else {
+          deliveryCost = parseFloat(feeVal);
+        }
+        deliverySource = 'ecotrack';
+      }
     } catch {}
     const itemsTotal = verifiedItems.reduce((s, i) => s + (Number(i.unit_price) * Number(i.quantity)), 0);
     const freeOver = parseFloat(settings.shipping_free_over || '0');

@@ -157,18 +157,19 @@ export default function AdminSettings() {
         }} disabled={testing || !form.ecotrack_token} className="rounded-xl bg-brand-600 px-4 py-2 text-sm font-bold text-white hover:bg-brand-700 disabled:opacity-50">
           {testing ? 'جارٍ الحفظ...' : 'حفظ Token Ecotrack'}
         </button>
-        <button type="button" onClick={async ()=>{
+          <button type="button" onClick={async ()=>{
           setTesting(true);
           try{
             const r=await fetch('/api/ecotrack/fees');
             const j=await r.json();
             if(j._debug === 'no_token') throw new Error('أدخل واحفظ Token Ecotrack أولاً');
-            let feesMap: Record<string,string> = {};
+            let feesMap: Record<string, any> = {};
             const extractFromArr = (arr: any[]) => {
               arr.forEach((item:any)=>{
                 const code=String(item.wilaya_id || item.code_wilaya || item.id || '');
-                const price=String(item.tarif || item.price || item.fee || item.montant || '400');
-                if(code) feesMap[code]=price;
+                const home=String(item.tarif || '0');
+                const sd=String(item.tarif_stopdesk || home);
+                if(code && home !== '0') feesMap[code]={ home, stop_desk: sd };
               });
             };
             if(Array.isArray(j)){
@@ -194,20 +195,38 @@ export default function AdminSettings() {
           {testing ? 'جارٍ الجلب...' : 'جلب الأسعار من Ecotrack'}
         </button>
         </div>
-        <div className="grid max-h-96 grid-cols-2 gap-3 overflow-y-auto rounded-xl border border-slate-100 p-3 sm:grid-cols-3">
+        <div className="grid max-h-96 grid-cols-1 gap-3 overflow-y-auto rounded-xl border border-slate-100 p-3 sm:grid-cols-2">
           {WILAYAS.map(w=>{
-            let fees: Record<string,string>={};
+            let fees: Record<string,any>={};
             try{ fees=JSON.parse(form.delivery_fees || '{}'); }catch{}
-            const val=fees[String(w.code)] || form.delivery_pricing || '400';
+            const feeVal=fees[String(w.code)];
+            const homeVal = typeof feeVal === 'object' && feeVal !== null ? (feeVal.home || '0') : (feeVal || form.delivery_pricing || '400');
+            const sdVal = typeof feeVal === 'object' && feeVal !== null ? (feeVal.stop_desk || feeVal.home || '0') : (feeVal || form.delivery_pricing || '400');
             return (
-              <div key={w.code} className="flex items-center gap-2">
-                <span className="w-24 shrink-0 text-xs font-bold text-slate-600">{w.code} - {w.name}</span>
-                <input className="input-field py-1.5 text-sm" type="number" value={val} onChange={e=>{
-                  let f: Record<string,string>={};
-                  try{ f=JSON.parse(form.delivery_fees || '{}'); }catch{ f={}; }
-                  f[String(w.code)]=e.target.value;
-                  setForm(prev=>({...prev, delivery_fees: JSON.stringify(f)}));
-                }} />
+              <div key={w.code} className="flex items-center gap-2 rounded-lg bg-slate-50 p-2">
+                <span className="w-28 shrink-0 text-xs font-bold text-slate-600">{w.code} - {w.name}</span>
+                <div className="flex flex-1 gap-2">
+                  <div className="flex-1">
+                    <label className="text-[10px] font-bold text-slate-400">المنزل</label>
+                    <input className="input-field py-1.5 text-sm" type="number" value={homeVal} onChange={e=>{
+                      let f: Record<string,any>={};
+                      try{ f=JSON.parse(form.delivery_fees || '{}'); }catch{ f={}; }
+                      const old = typeof f[String(w.code)] === 'object' ? f[String(w.code)] : {};
+                      f[String(w.code)] = { ...old, home: e.target.value };
+                      setForm(prev=>({...prev, delivery_fees: JSON.stringify(f)}));
+                    }} />
+                  </div>
+                  <div className="flex-1">
+                    <label className="text-[10px] font-bold text-slate-400">المكتب</label>
+                    <input className="input-field py-1.5 text-sm" type="number" value={sdVal} onChange={e=>{
+                      let f: Record<string,any>={};
+                      try{ f=JSON.parse(form.delivery_fees || '{}'); }catch{ f={}; }
+                      const old = typeof f[String(w.code)] === 'object' ? f[String(w.code)] : {};
+                      f[String(w.code)] = { ...old, stop_desk: e.target.value };
+                      setForm(prev=>({...prev, delivery_fees: JSON.stringify(f)}));
+                    }} />
+                  </div>
+                </div>
               </div>
             );
           })}

@@ -32,9 +32,20 @@ export default function Checkout() {
     // delivery price per wilaya from stored settings (fallback)
     try {
       const fees = JSON.parse(settings?.delivery_fees || '{}');
-      if (fees[code] !== undefined) setDeliveryForWilaya(parseFloat(fees[code]));
-      else setDeliveryForWilaya(null);
-    } catch { setDeliveryForWilaya(null); }
+      if (fees[code] !== undefined) {
+        const feeVal = fees[code];
+        if (typeof feeVal === 'object' && feeVal !== null) {
+          setDeliveryForWilaya(parseFloat(feeVal.home || '350'));
+          setStopDeskFee(parseFloat(feeVal.stop_desk || feeVal.home || '350'));
+        } else {
+          setDeliveryForWilaya(parseFloat(feeVal));
+          setStopDeskFee(null);
+        }
+      } else {
+        setDeliveryForWilaya(null);
+        setStopDeskFee(null);
+      }
+    } catch { setDeliveryForWilaya(null); setStopDeskFee(null); }
 
     // Fetch real-time fee from Ecotrack
     setLoadingFee(true);
@@ -189,7 +200,15 @@ export default function Checkout() {
               </Field>
             </div>
             {form.wilaya && (
-              <p className="text-xs font-bold text-brand-600">تكلفة التوصيل إلى {form.wilaya.split(' - ')[1] || form.wilaya}: {effectiveDelivery === 0 ? 'مجاني 🎉' : formatPrice(baseDelivery)}</p>
+              <p className="text-xs font-bold text-brand-600">
+                تكلفة التوصيل إلى {form.wilaya.split(' - ')[1] || form.wilaya}: {effectiveDelivery === 0 ? 'مجاني 🎉' : formatPrice(effectiveDelivery)}
+                {form.stop_desk === '0' && stopDeskFee !== null && deliveryForWilaya !== null && stopDeskFee < deliveryForWilaya && (
+                  <span className="text-slate-400 mr-1">(المكتب: {formatPrice(stopDeskFee)})</span>
+                )}
+                {form.stop_desk === '1' && deliveryForWilaya !== null && stopDeskFee !== null && deliveryForWilaya > stopDeskFee && (
+                  <span className="text-slate-400 mr-1">(المنزل: {formatPrice(deliveryForWilaya)})</span>
+                )}
+              </p>
             )}
 
             <Field label="العنوان بالتفصيل" error={errors.address}>
@@ -199,13 +218,19 @@ export default function Checkout() {
             <div>
               <span className="mb-2 block text-sm font-bold text-slate-700">نوع التوصيل</span>
               <div className="grid grid-cols-2 gap-3">
-                <label className={`flex cursor-pointer items-center justify-center gap-2 rounded-xl border-2 p-3 text-center transition ${form.stop_desk === '0' ? 'border-brand-500 bg-brand-50 text-brand-700' : 'border-slate-200 bg-white text-slate-600'}`}>
-                  <input type="radio" name="stop_desk" value="0" checked={form.stop_desk === '0'} onChange={set('stop_desk')} className="h-4 w-4 accent-brand-600" />
-                  <span className="text-sm font-bold">إلى المنزل 🏠</span>
+                <label className={`flex cursor-pointer flex-col items-center justify-center gap-1 rounded-xl border-2 p-3 text-center transition ${form.stop_desk === '0' ? 'border-brand-500 bg-brand-50 text-brand-700' : 'border-slate-200 bg-white text-slate-600'}`}>
+                  <div className="flex items-center gap-2">
+                    <input type="radio" name="stop_desk" value="0" checked={form.stop_desk === '0'} onChange={set('stop_desk')} className="h-4 w-4 accent-brand-600" />
+                    <span className="text-sm font-bold">إلى المنزل 🏠</span>
+                  </div>
+                  {deliveryForWilaya !== null && <span className="text-xs font-bold">{formatPrice(deliveryForWilaya)}</span>}
                 </label>
-                <label className={`flex items-center justify-center gap-2 rounded-xl border-2 p-3 text-center transition ${!deskAvailable ? 'border-slate-100 bg-slate-50 text-slate-300 cursor-not-allowed' : form.stop_desk === '1' ? 'border-brand-500 bg-brand-50 text-brand-700 cursor-pointer' : 'border-slate-200 bg-white text-slate-600 cursor-pointer'}`}>
-                  <input type="radio" name="stop_desk" value="1" checked={form.stop_desk === '1'} onChange={set('stop_desk')} disabled={!deskAvailable} className="h-4 w-4 accent-brand-600 disabled:opacity-30" />
-                  <span className="text-sm font-bold">إلى المكتب 📦</span>
+                <label className={`flex flex-col items-center justify-center gap-1 rounded-xl border-2 p-3 text-center transition ${!deskAvailable ? 'border-slate-100 bg-slate-50 text-slate-300 cursor-not-allowed' : form.stop_desk === '1' ? 'border-brand-500 bg-brand-50 text-brand-700 cursor-pointer' : 'border-slate-200 bg-white text-slate-600 cursor-pointer'}`}>
+                  <div className="flex items-center gap-2">
+                    <input type="radio" name="stop_desk" value="1" checked={form.stop_desk === '1'} onChange={set('stop_desk')} disabled={!deskAvailable} className="h-4 w-4 accent-brand-600 disabled:opacity-30" />
+                    <span className="text-sm font-bold">إلى المكتب 📦</span>
+                  </div>
+                  {stopDeskFee !== null && <span className="text-xs font-bold">{formatPrice(stopDeskFee)}</span>}
                 </label>
               </div>
               {!deskAvailable ? (
