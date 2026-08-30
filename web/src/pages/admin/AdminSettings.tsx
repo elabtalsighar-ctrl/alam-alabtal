@@ -143,7 +143,9 @@ export default function AdminSettings() {
 
       <Section title="تسعير التوصيل حسب الولاية — من Ecotrack">
         <p className="mb-3 text-sm text-slate-500">حدد سعر التوصيل لكل ولاية. سيُحسب السعر تلقائياً في صفحة الطلب حسب الولاية المختارة. يمكنك جلب الأسعار مباشرة من Ecotrack.</p>
-        <button type="button" onClick={async ()=>{
+        <div className="mb-4 rounded-xl bg-slate-50 p-4 space-y-3">
+          <Field label="Ecotrack Token"><input className="input-field" dir="ltr" type="password" value={form.ecotrack_token || ''} onChange={set('ecotrack_token')} placeholder="PDsIM1GMEu..." /></Field>
+          <button type="button" onClick={async ()=>{
           setTesting(true);
           try{
             const params = new URLSearchParams();
@@ -180,9 +182,10 @@ export default function AdminSettings() {
               notify('لم يتم العثور على أسعار في رد Ecotrack. تحقق من الـ Token' + raw, 'error');
             }
           }catch(err:any){ notify(err.message,'error'); } finally{ setTesting(false); }
-        }} disabled={testing} className="mb-4 rounded-xl bg-brand-600 px-4 py-2 text-sm font-bold text-white hover:bg-brand-700 disabled:opacity-50">
+        }} disabled={testing} className="rounded-xl bg-brand-600 px-4 py-2 text-sm font-bold text-white hover:bg-brand-700 disabled:opacity-50">
           {testing ? 'جارٍ الجلب...' : 'جلب الأسعار من Ecotrack'}
         </button>
+        </div>
         <div className="grid max-h-96 grid-cols-2 gap-3 overflow-y-auto rounded-xl border border-slate-100 p-3 sm:grid-cols-3">
           {WILAYAS.map(w=>{
             let fees: Record<string,string>={};
