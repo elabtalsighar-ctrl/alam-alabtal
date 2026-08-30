@@ -32,6 +32,7 @@ export const api = {
 
   // helpers
   settings: () => request<{ [k: string]: string }>('/settings'),
+  adminSettings: () => request<{ [k: string]: string }>('/admin/settings'),
   updateSettings: (b: Record<string, string>) => request<{ [k: string]: string }>('/settings', { method: 'PUT', body: JSON.stringify(b) }),
   categories: (all = false) => request<any[]>('/categories' + (all ? '?all=1' : '')),
   products: (qs = '') => request<any[]>(`/products${qs}`),

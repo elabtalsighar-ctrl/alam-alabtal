@@ -1,5 +1,7 @@
 import express from 'express';
 import cors from 'cors';
+import helmet from 'helmet';
+import rateLimit from 'express-rate-limit';
 import path from 'node:path';
 import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -13,17 +15,33 @@ import { pushOrderToEcotrack, testEcotrackConnection } from './ecotrack.js';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
 const PORT = process.env.PORT || 4000;
-const JWT_SECRET = process.env.JWT_SECRET || 'alam-alabtal-dev-secret-change-me';
+
+if (!process.env.JWT_SECRET) {
+  console.error('[FATAL] JWT_SECRET environment variable is required. Generate one with: openssl rand -hex 32');
+  process.exit(1);
+}
+const JWT_SECRET = process.env.JWT_SECRET;
 const UPLOAD_DIR = path.join(__dirname, 'uploads');
 if (!fs.existsSync(UPLOAD_DIR)) fs.mkdirSync(UPLOAD_DIR, { recursive: true });
 
-app.use(cors());
-app.use(express.json({ limit: '2mb' }));
+// ---------- Security middleware ----------
+app.use(helmet({ contentSecurityPolicy: false }));
+app.use(cors({
+  origin: process.env.ALLOWED_ORIGIN || false,
+  methods: ['GET', 'POST', 'PUT', 'DELETE'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
+app.use(express.json({ limit: '1mb' }));
 app.use('/uploads', express.static(UPLOAD_DIR));
+
+const loginLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 10, standardHeaders: true, legacyHeaders: false, message: { error: 'Too many login attempts. Try again later.' } });
+const orderLimiter = rateLimit({ windowMs: 60 * 1000, max: 5, standardHeaders: true, legacyHeaders: false, message: { error: 'Too many orders. Try again later.' } });
+const reviewLimiter = rateLimit({ windowMs: 60 * 1000, max: 5, standardHeaders: true, legacyHeaders: false, message: { error: 'Too many reviews. Try again later.' } });
+const contactLimiter = rateLimit({ windowMs: 60 * 1000, max: 3, standardHeaders: true, legacyHeaders: false, message: { error: 'Too many messages. Try again later.' } });
 
 // ---------- Auth helpers ----------
 function signToken(user) {
-  return jwt.sign({ id: user.id, email: user.email, role: user.role }, JWT_SECRET, { expiresIn: '7d' });
+  return jwt.sign({ id: user.id, email: user.email, role: user.role }, JWT_SECRET, { expiresIn: '1d' });
 }
 
 function requireAuth(req, res, next) {
@@ -39,6 +57,11 @@ function requireAuth(req, res, next) {
   } catch {
     return res.status(401).json({ error: 'Unauthorized' });
   }
+}
+
+function requireAdmin(req, res, next) {
+  if (req.user?.role !== 'admin') return res.status(403).json({ error: 'Forbidden' });
+  next();
 }
 
 // ---------- Uploads ----------
@@ -82,7 +105,30 @@ function lowStockThreshold() {
 }
 
 // ---------- Settings ----------
+const PUBLIC_SETTINGS_KEYS = [
+  'store_name', 'store_name_en', 'store_description', 'logo',
+  'whatsapp_number', 'whatsapp_message', 'contact_phone', 'contact_email',
+  'instagram_url', 'facebook_url', 'tiktok_url',
+  'delivery_pricing', 'delivery_time', 'delivery_info', 'shipping_free_over',
+  'delivery_fees', 'low_stock_threshold',
+  'ecotrack_enabled', 'ecotrack_base_url',
+  'google_sheets_url', 'faq_content', 'facebook_pixel_id'
+];
+
 app.get('/api/settings', (req, res) => {
+  try {
+    const all = getSettings();
+    const safe = {};
+    for (const key of PUBLIC_SETTINGS_KEYS) {
+      if (all[key] !== undefined) safe[key] = all[key];
+    }
+    res.json(safe);
+  } catch {
+    res.status(500).json({ error: 'حدث خطأ، حاول مرة أخرى.' });
+  }
+});
+
+app.get('/api/admin/settings', requireAuth, requireAdmin, (req, res) => {
   try {
     res.json(getSettings());
   } catch {
@@ -90,7 +136,7 @@ app.get('/api/settings', (req, res) => {
   }
 });
 
-app.put('/api/settings', requireAuth, (req, res) => {
+app.put('/api/settings', requireAuth, requireAdmin, (req, res) => {
   try {
     res.json(updateSettings(req.body));
   } catch {
@@ -98,7 +144,7 @@ app.put('/api/settings', requireAuth, (req, res) => {
   }
 });
 
-app.post('/api/settings/test-sheets', requireAuth, async (req, res) => {
+app.post('/api/settings/test-sheets', requireAuth, requireAdmin, async (req, res) => {
   try {
     const sheetsUrl = (getSettings().google_sheets_url || '').trim();
     if (!sheetsUrl) return res.status(400).json({ error: 'لم يتم ضبط رابط Google Sheets.' });
@@ -123,19 +169,19 @@ app.post('/api/settings/test-sheets', requireAuth, async (req, res) => {
     });
     const text = await r.text();
     if (text.includes('<!DOCTYPE') || !r.ok) {
-      return res.status(500).json({ error: 'فشل الاتصال. تأكد من Deploy كـ Web App بصلاحية Anyone و Execute as Me. الرد: ' + text.slice(0, 300) });
+      return res.status(500).json({ error: 'فشل الاتصال. تأكد من Deploy كـ Web App بصلاحية Anyone و Execute as Me.' });
     }
-    res.json({ ok: true, response: text.slice(0, 500) });
+    res.json({ ok: true });
   } catch (e) {
     res.status(500).json({ error: 'فشل الاتصال: ' + (e.message || String(e)) });
   }
 });
 
-app.post('/api/ecotrack/test', requireAuth, async (req, res) => {
+app.post('/api/ecotrack/test', requireAuth, requireAdmin, async (req, res) => {
   try {
     const result = await testEcotrackConnection();
     if (result.ok) return res.json(result);
-    return res.status(500).json({ error: result.error || 'فشل الاتصال بـ Ecotrack', details: result });
+    return res.status(500).json({ error: 'فشل الاتصال بـ Ecotrack' });
   } catch (e) {
     res.status(500).json({ error: 'فشل الاتصال: ' + (e.message || String(e)) });
   }
@@ -172,27 +218,22 @@ app.get('/api/ecotrack/communes', async (req, res) => {
 app.get('/api/ecotrack/fees', async (req, res) => {
   try {
     const s = getSettings();
-    const baseUrl = (req.query.base_url || s.ecotrack_base_url || 'https://anderson-ecommerce.ecotrack.dz').replace(/\/$/, '');
-    const token = (req.query.token || s.ecotrack_token || '').trim();
+    const baseUrl = (s.ecotrack_base_url || 'https://anderson-ecommerce.ecotrack.dz').replace(/\/$/, '');
+    const token = (s.ecotrack_token || '').trim();
     if (!token) {
-      console.log('[Ecotrack] No token in settings or request');
       return res.json({ fees: {}, _debug: 'no_token' });
     }
     const url = `${baseUrl}/api/v1/get/fees?api_token=${encodeURIComponent(token)}`;
-    console.log('[Ecotrack] Fetching fees from:', url);
     const r = await fetch(url);
     const t = await r.text();
-    console.log('[Ecotrack] Response status:', r.status, 'body preview:', t.substring(0, 300));
     let j = null;
     try { j = JSON.parse(t); } catch {}
     if (!j || (typeof j === 'object' && Object.keys(j).length === 0)) {
-      console.log('[Ecotrack] Empty or unparseable response');
-      return res.json({ fees: {}, _debug: 'empty_response', raw: t.substring(0, 500) });
+      return res.json({ fees: {}, _debug: 'empty_response' });
     }
     return res.json(j);
   } catch (e) {
-    console.error('[Ecotrack] Error:', e.message);
-    res.status(500).json({ error: e.message });
+    res.status(500).json({ error: 'فشل جلب الأسعار' });
   }
 });
 
@@ -263,7 +304,7 @@ app.get('/api/ecotrack/fee/:wilaya_id', async (req, res) => {
 });
 
 // ---------- Auth ----------
-app.post('/api/auth/login', (req, res) => {
+app.post('/api/auth/login', loginLimiter, (req, res) => {
   try {
     const { email, password } = req.body;
     if (!email || !password) return res.status(400).json({ error: 'تسجيل الدخول غير مكتمل.' });
@@ -282,7 +323,7 @@ app.get('/api/auth/me', requireAuth, (req, res) => {
 });
 
 // ---------- Upload ----------
-app.post('/api/upload', requireAuth, upload.single('file'), (req, res) => {
+app.post('/api/upload', requireAuth, requireAdmin, upload.single('file'), (req, res) => {
   if (!req.file) return res.status(400).json({ error: 'لم يتم رفع أي ملف.' });
   res.json({ url: `/uploads/${req.file.filename}` });
 });
@@ -300,7 +341,7 @@ app.get('/api/categories', (req, res) => {
   }
 });
 
-app.post('/api/categories', requireAuth, (req, res) => {
+app.post('/api/categories', requireAuth, requireAdmin, (req, res) => {
   try {
     const { name, description, image, sort_order, enabled } = req.body;
     if (!name) return res.status(400).json({ error: 'اسم التصنيف مطلوب.' });
@@ -313,7 +354,7 @@ app.post('/api/categories', requireAuth, (req, res) => {
   }
 });
 
-app.put('/api/categories/:id', requireAuth, (req, res) => {
+app.put('/api/categories/:id', requireAuth, requireAdmin, (req, res) => {
   try {
     const { name, description, image, enabled, sort_order } = req.body;
     const existing = db.prepare('SELECT * FROM categories WHERE id = ?').get(req.params.id);
@@ -327,7 +368,7 @@ app.put('/api/categories/:id', requireAuth, (req, res) => {
   }
 });
 
-app.delete('/api/categories/:id', requireAuth, (req, res) => {
+app.delete('/api/categories/:id', requireAuth, requireAdmin, (req, res) => {
   try {
     db.prepare('DELETE FROM categories WHERE id = ?').run(req.params.id);
     res.json({ ok: true });
@@ -407,7 +448,7 @@ app.get('/api/products/:slugOrId', (req, res) => {
   }
 });
 
-app.post('/api/products', requireAuth, (req, res) => {
+app.post('/api/products', requireAuth, requireAdmin, (req, res) => {
   try {
     const p = req.body;
     if (!p.name || p.price === undefined) return res.status(400).json({ error: 'الاسم والسعر مطلوبان.' });
@@ -437,7 +478,7 @@ app.post('/api/products', requireAuth, (req, res) => {
   }
 });
 
-app.put('/api/products/:id', requireAuth, (req, res) => {
+app.put('/api/products/:id', requireAuth, requireAdmin, (req, res) => {
   try {
     const existing = db.prepare('SELECT * FROM products WHERE id = ?').get(req.params.id);
     if (!existing) return res.status(404).json({ error: 'المنتج غير موجود.' });
@@ -473,7 +514,7 @@ app.put('/api/products/:id', requireAuth, (req, res) => {
   }
 });
 
-app.delete('/api/products/:id', requireAuth, (req, res) => {
+app.delete('/api/products/:id', requireAuth, requireAdmin, (req, res) => {
   try {
     db.prepare('DELETE FROM products WHERE id = ?').run(req.params.id);
     res.json({ ok: true });
@@ -491,18 +532,31 @@ function generateOrderNumber() {
   return `AA-${y}${m}-${String(count).padStart(4, '0')}`;
 }
 
-app.post('/api/orders', async (req, res) => {
+app.post('/api/orders', orderLimiter, async (req, res) => {
   try {
     const { customer_name, phone, wilaya, commune, address, items, stop_desk } = req.body;
     if (!customer_name || !phone || !wilaya || !commune || !address) {
       return res.status(400).json({ error: 'الرجاء تعبئة جميع الحقول المطلوبة.' });
     }
-    if (!Array.isArray(items) || items.length === 0) {
-      return res.status(400).json({ error: 'سلتك فارغة.' });
+    if (!Array.isArray(items) || items.length === 0 || items.length > 50) {
+      return res.status(400).json({ error: 'سلتك فارغة أو بها أكثر من 50 منتج.' });
     }
     const phoneClean = String(phone).replace(/[^0-9]/g, '');
     if (!/^(0|00|\+)?(5|6|7)\d{8}$/.test(phoneClean)) {
       return res.status(400).json({ error: 'الرجاء إدخال رقم هاتف صحيح.' });
+    }
+
+    // Server-side price verification
+    const verifiedItems = [];
+    for (const item of items) {
+      const name = String(item.product_name || '').slice(0, 500);
+      const qty = Math.min(Math.max(1, Number(item.quantity) || 1), 100);
+      let price = Number(item.unit_price) || 0;
+      if (item.product_id) {
+        const product = db.prepare('SELECT price FROM products WHERE id = ?').get(item.product_id);
+        if (product) price = product.price;
+      }
+      verifiedItems.push({ ...item, product_name: name, quantity: qty, unit_price: price });
     }
 
     const settings = getSettings();
@@ -513,7 +567,7 @@ app.post('/api/orders', async (req, res) => {
       const code = m ? m[0] : '';
       if (code && fees[code] !== undefined) deliveryCost = parseFloat(fees[code]);
     } catch {}
-    const itemsTotal = items.reduce((s, i) => s + (Number(i.unit_price) * Number(i.quantity)), 0);
+    const itemsTotal = verifiedItems.reduce((s, i) => s + (Number(i.unit_price) * Number(i.quantity)), 0);
     const freeOver = parseFloat(settings.shipping_free_over || '0');
     if (freeOver > 0 && itemsTotal >= freeOver) deliveryCost = 0;
     const total = itemsTotal + deliveryCost;
@@ -537,7 +591,7 @@ app.post('/api/orders', async (req, res) => {
       INSERT INTO order_items (order_id, product_id, product_name, unit_price, quantity, image, product_snapshot)
       VALUES (?, ?, ?, ?, ?, ?, ?)
     `);
-    for (const item of items) {
+    for (const item of verifiedItems) {
       insItem.run(orderId, item.product_id || null, item.product_name, Number(item.unit_price), Number(item.quantity), item.image || null, JSON.stringify(item) || null);
     }
 
@@ -550,7 +604,7 @@ app.post('/api/orders', async (req, res) => {
         order_number: order.order_number,
         timestamp: order.created_at,
         customer_name, phone: phoneClean, wilaya, commune, address,
-        items: items.map(i => `${i.product_name} x${i.quantity} (${i.unit_price} دج)`).join(' | '),
+        items: verifiedItems.map(i => `${i.product_name} x${i.quantity} (${i.unit_price} دج)`).join(' | '),
         items_total: itemsTotal, delivery_cost: deliveryCost, total,
         status: 'new'
       };
@@ -574,7 +628,7 @@ app.post('/api/orders', async (req, res) => {
   }
 });
 
-app.get('/api/orders', requireAuth, (req, res) => {
+app.get('/api/orders', requireAuth, requireAdmin, (req, res) => {
   try {
     const { status } = req.query;
     let rows;
@@ -588,7 +642,7 @@ app.get('/api/orders', requireAuth, (req, res) => {
   }
 });
 
-app.put('/api/orders/:id', requireAuth, (req, res) => {
+app.put('/api/orders/:id', requireAuth, requireAdmin, (req, res) => {
   try {
     const { status } = req.body;
     const allowed = ['new', 'confirmed', 'preparing', 'shipped', 'delivered', 'cancelled'];
@@ -634,20 +688,20 @@ app.put('/api/orders/:id', requireAuth, (req, res) => {
   }
 });
 
-app.post('/api/orders/:id/push-ecotrack', requireAuth, async (req, res) => {
+app.post('/api/orders/:id/push-ecotrack', requireAuth, requireAdmin, async (req, res) => {
   try {
     const order = db.prepare('SELECT * FROM orders WHERE id = ?').get(req.params.id);
     if (!order) return res.status(404).json({ error: 'الطلب غير موجود.' });
     const result = await pushOrderToEcotrack(order);
-    if (result.ok) return res.json({ ok: true, ...result, order: db.prepare('SELECT * FROM orders WHERE id = ?').get(order.id) });
-    return res.status(500).json({ error: result.error || 'فشل الرفع إلى Ecotrack', details: result });
+    if (result.ok) return res.json({ ok: true, tracking: result.tracking, order: db.prepare('SELECT * FROM orders WHERE id = ?').get(order.id) });
+    return res.status(500).json({ error: 'فشل الرفع إلى Ecotrack' });
   } catch (e) {
     res.status(500).json({ error: 'فشل: ' + (e.message || String(e)) });
   }
 });
 
 // ---------- Customers ----------
-app.get('/api/customers', requireAuth, (req, res) => {
+app.get('/api/customers', requireAuth, requireAdmin, (req, res) => {
   try {
     const rows = db.prepare(`
       SELECT c.*,
@@ -668,7 +722,7 @@ app.get('/api/customers', requireAuth, (req, res) => {
   }
 });
 
-app.post('/api/customers', requireAuth, (req, res) => {
+app.post('/api/customers', requireAuth, requireAdmin, (req, res) => {
   try {
     const { name, phone, wilaya, commune, address } = req.body;
     if (!name || !phone || !wilaya || !commune) {
@@ -705,7 +759,7 @@ app.get('/api/reviews', (req, res) => {
   }
 });
 
-app.post('/api/reviews', (req, res) => {
+app.post('/api/reviews', reviewLimiter, (req, res) => {
   try {
     const { customer_name, rating, comment, product_id } = req.body;
     if (!customer_name || !rating || !comment) return res.status(400).json({ error: 'جميع الحقول مطلوبة.' });
@@ -719,7 +773,7 @@ app.post('/api/reviews', (req, res) => {
   }
 });
 
-app.put('/api/reviews/:id', requireAuth, (req, res) => {
+app.put('/api/reviews/:id', requireAuth, requireAdmin, (req, res) => {
   try {
     const { customer_name, rating, comment, verified, approved, product_id } = req.body;
     const existing = db.prepare('SELECT * FROM reviews WHERE id = ?').get(req.params.id);
@@ -735,7 +789,7 @@ app.put('/api/reviews/:id', requireAuth, (req, res) => {
   }
 });
 
-app.delete('/api/reviews/:id', requireAuth, (req, res) => {
+app.delete('/api/reviews/:id', requireAuth, requireAdmin, (req, res) => {
   try {
     db.prepare('DELETE FROM reviews WHERE id = ?').run(req.params.id);
     res.json({ ok: true });
@@ -745,7 +799,7 @@ app.delete('/api/reviews/:id', requireAuth, (req, res) => {
 });
 
 // ---------- Stats / Overview ----------
-app.get('/api/stats', requireAuth, (req, res) => {
+app.get('/api/stats', requireAuth, requireAdmin, (req, res) => {
   try {
     const totalOrders = db.prepare('SELECT COUNT(*) as c FROM orders').get().c;
     const totalSales = db.prepare('SELECT COALESCE(SUM(total),0) as s FROM orders WHERE status NOT IN (?, ?)').get('cancelled', 'new').s;
@@ -768,7 +822,7 @@ app.get('/api/stats', requireAuth, (req, res) => {
 });
 
 // ---------- Messages / Contact ----------
-app.post('/api/contact', (req, res) => {
+app.post('/api/contact', contactLimiter, (req, res) => {
   const { name, phone, message } = req.body;
   if (!name || !phone || !message) return res.status(400).json({ error: 'الرجاء تعبئة جميع الحقول.' });
   // In a full production build this would email/notify the admin. Stored to a table.
@@ -807,7 +861,7 @@ if (fs.existsSync(path.join(webDist, 'index.html'))) {
 // Error handler
 app.use((err, req, res, next) => {
   if (err) {
-    return res.status(400).json({ error: err.message || 'حدث خطأ، حاول مرة أخرى.' });
+    return res.status(400).json({ error: 'حدث خطأ، حاول مرة أخرى.' });
   }
   next();
 });
@@ -816,5 +870,7 @@ app.listen(PORT, async () => {
   console.log(`Alam Al-Abtal Al-Sighar server running on http://localhost:${PORT}`);
   const result = seed();
   console.log(`Seed: ${result}`);
-  console.log('Admin login: admin@alam-alabtal.shop / admin123');
+  if (!process.env.ADMIN_PASSWORD) {
+    console.log('[WARNING] Set ADMIN_PASSWORD env var to change the default admin password.');
+  }
 });

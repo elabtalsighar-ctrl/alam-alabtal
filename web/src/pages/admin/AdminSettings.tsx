@@ -10,7 +10,7 @@ type FAQItem = { q: string; a: string };
 
 export default function AdminSettings() {
   useSEO({ title: 'Settings | Admin' });
-  const { settings, refresh } = useSettings();
+  const { refresh } = useSettings();
   const { notify } = useToast();
   const [form, setForm] = useState<Record<string, string>>({});
   const [faqs, setFaqs] = useState<FAQItem[]>([]);
@@ -19,16 +19,16 @@ export default function AdminSettings() {
   const [testing, setTesting] = useState(false);
 
   useEffect(() => {
-    if (settings) {
-      setForm({ ...settings });
+    api.adminSettings().then(data => {
+      setForm(data);
       try {
-        const parsed = settings.faq_content ? JSON.parse(settings.faq_content) : null;
+        const parsed = data.faq_content ? JSON.parse(data.faq_content) : null;
         setFaqs(Array.isArray(parsed) ? parsed : []);
       } catch {
         setFaqs([]);
       }
-    }
-  }, [settings]);
+    }).catch(() => {});
+  }, []);
 
   const set = (k: string) => (e: React.ChangeEvent<any>) => setForm(f => ({ ...f, [k]: e.target.value }));
 
@@ -148,13 +148,13 @@ export default function AdminSettings() {
           <button type="button" onClick={async ()=>{
           setTesting(true);
           try{
-            const params = new URLSearchParams();
-            if(form.ecotrack_token) params.set('token', form.ecotrack_token);
-            if(form.ecotrack_base_url) params.set('base_url', form.ecotrack_base_url);
-            const qs = params.toString() ? `?${params.toString()}` : '';
-            const r=await fetch(`/api/ecotrack/fees${qs}`);
+            const faqContent = JSON.stringify(faqs.filter(f => f.q && f.a));
+            const { faq_content: _omit, ...payload } = form;
+            await api.updateSettings({ ...payload, faq_content: faqContent });
+            await refresh();
+            const r=await fetch('/api/ecotrack/fees');
             const j=await r.json();
-            if(j._debug === 'no_token') throw new Error('أدخل Token Ecotrack أولاً');
+            if(j._debug === 'no_token') throw new Error('أدخل Token Ecotrack أولاً ثم احفظ');
             let feesMap: Record<string,string> = {};
             const extractFromArr = (arr: any[]) => {
               arr.forEach((item:any)=>{
@@ -176,14 +176,14 @@ export default function AdminSettings() {
             }
             if(Object.keys(feesMap).length){
               setForm(f=>({...f, delivery_fees: JSON.stringify(feesMap)}));
+              await api.updateSettings({ delivery_fees: JSON.stringify(feesMap) });
               notify(`تم جلب ${Object.keys(feesMap).length} سعر من Ecotrack`);
             } else {
-              const raw = j._debug ? ` (${j._debug})` : '';
-              notify('لم يتم العثور على أسعار في رد Ecotrack. تحقق من الـ Token' + raw, 'error');
+              notify('لم يتم العثور على أسعار. تحقق من Token Ecotrack', 'error');
             }
           }catch(err:any){ notify(err.message,'error'); } finally{ setTesting(false); }
         }} disabled={testing} className="rounded-xl bg-brand-600 px-4 py-2 text-sm font-bold text-white hover:bg-brand-700 disabled:opacity-50">
-          {testing ? 'جارٍ الجلب...' : 'جلب الأسعار من Ecotrack'}
+          {testing ? 'جارٍ الجلب...' : 'حفظ وأجلب الأسعار من Ecotrack'}
         </button>
         </div>
         <div className="grid max-h-96 grid-cols-2 gap-3 overflow-y-auto rounded-xl border border-slate-100 p-3 sm:grid-cols-3">

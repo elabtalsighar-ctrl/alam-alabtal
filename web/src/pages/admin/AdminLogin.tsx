@@ -59,9 +59,6 @@ export default function AdminLogin() {
             </button>
           </form>
 
-          <p className="mt-6 rounded-xl bg-slate-50 p-3 text-center text-xs text-slate-500">
-            الافتراضي: admin@alam-alabtal.shop / admin123
-          </p>
           <Link to="/" className="mt-4 block text-center text-sm font-bold text-brand-600 hover:underline">العودة إلى المتجر</Link>
         </div>
       </div>

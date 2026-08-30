@@ -42,7 +42,7 @@ export async function pushOrderToEcotrack(order) {
     const text = await r.text();
     let json = null;
     try { json = JSON.parse(text); } catch {}
-    console.log(`[Ecotrack] POST ${url} -> ${r.status} ${text.slice(0, 600)}`);
+    console.log(`[Ecotrack] POST order -> ${r.status}`);
     return { r, text, json, url };
   }
 
@@ -77,15 +77,15 @@ export async function pushOrderToEcotrack(order) {
           } catch {}
           return { ok: true, tracking, response: retry.json, fallbackCommune: fallback };
         }
-        return { ok: false, error: retry.text.slice(0, 400) };
+        return { ok: false, error: 'Ecotrack commune error' };
       }
     } catch (e) {
       console.error('[Ecotrack] fallback fetch error', e.message);
     }
   }
-  if (json && json.success === false) return { ok: false, error: json.message || text.slice(0, 400) };
-  if (!r.ok) return { ok: false, error: `HTTP ${r.status}: ${text.slice(0, 400)}` };
-  return { ok: false, error: text.slice(0, 400) };
+  if (json && json.success === false) return { ok: false, error: 'Ecotrack rejected the order' };
+  if (!r.ok) return { ok: false, error: 'Ecotrack request failed' };
+  return { ok: false, error: 'Ecotrack: unexpected response' };
   } catch (e) {
     console.error('[Ecotrack] error:', e.message);
     return { ok: false, error: e.message };
@@ -101,10 +101,9 @@ export async function testEcotrackConnection() {
     const text = await r.text();
     let json = null;
     try { json = JSON.parse(text); } catch {}
-    console.log(`[Ecotrack test] GET ${url} -> ${r.status} ${text.slice(0, 400)}`);
-    if (json && json.success) return { ok: true, response: json };
-    if (json) return { ok: false, error: json.message || text.slice(0, 300) };
-    return { ok: false, error: text.slice(0, 300) };
+    console.log(`[Ecotrack test] -> ${r.status}`);
+    if (json && json.success) return { ok: true };
+    return { ok: false, error: 'فشل التحقق من Token' };
   } catch (e) {
     return { ok: false, error: e.message };
   }

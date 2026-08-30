@@ -13,7 +13,8 @@ export function seed() {
   // Admin user
   const existing = db.prepare('SELECT id FROM users WHERE email = ?').get('admin@alam-alabtal.shop');
   if (!existing) {
-    const hash = bcrypt.hashSync('admin123', 10);
+    const adminPassword = process.env.ADMIN_PASSWORD || 'admin123';
+    const hash = bcrypt.hashSync(adminPassword, 10);
     db.prepare('INSERT INTO users (email, password_hash, role, name) VALUES (?, ?, ?, ?)')
       .run('admin@alam-alabtal.shop', hash, 'admin', 'المدير');
   }
