@@ -237,6 +237,37 @@ app.get('/api/ecotrack/fees', async (req, res) => {
   }
 });
 
+app.post('/api/ecotrack/fetch-fees', requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const s = getSettings();
+    const baseUrl = (s.ecotrack_base_url || 'https://anderson-ecommerce.ecotrack.dz').replace(/\/$/, '');
+    const token = (req.body.token || s.ecotrack_token || '').trim();
+    if (!token) return res.status(400).json({ error: 'أدخل Token Ecotrack أولاً' });
+    const url = `${baseUrl}/api/v1/get/fees?api_token=${encodeURIComponent(token)}`;
+    const r = await fetch(url);
+    const t = await r.text();
+    let j = null;
+    try { j = JSON.parse(t); } catch {}
+    if (!j) return res.status(500).json({ error: 'فشل جلب الأسعار' });
+    const feesMap = {};
+    const arr = j.livraison || (Array.isArray(j) ? j : null);
+    if (Array.isArray(arr)) {
+      arr.forEach(item => {
+        const code = String(item.wilaya_id || '');
+        const price = String(item.tarif || '0');
+        if (code && price !== '0') feesMap[code] = price;
+      });
+    }
+    if (Object.keys(feesMap).length) {
+      updateSettings({ ecotrack_token: token, delivery_fees: JSON.stringify(feesMap) });
+      return res.json({ ok: true, count: Object.keys(feesMap).length, fees: feesMap });
+    }
+    return res.status(500).json({ error: 'لم يتم العثور على أسعار' });
+  } catch (e) {
+    res.status(500).json({ error: 'فشل جلب الأسعار' });
+  }
+});
+
 const _feeCache = {};
 const FEE_CACHE_TTL = 60 * 60 * 1000;
 

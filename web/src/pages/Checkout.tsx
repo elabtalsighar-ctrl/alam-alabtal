@@ -42,8 +42,8 @@ export default function Checkout() {
       .then(async r => {
         if (!r.ok) throw new Error('');
         const data = await r.json();
-        if (data.home) setDeliveryForWilaya(data.home);
-        if (data.stop_desk) setStopDeskFee(data.stop_desk);
+        if (data.home !== undefined && data.home !== null && data.source !== 'fallback') setDeliveryForWilaya(data.home);
+        if (data.stop_desk !== undefined && data.stop_desk !== null && data.source !== 'fallback') setStopDeskFee(data.stop_desk);
         if (data.stop_desk_available === false && form.stop_desk === '1') {
           setForm(f => ({ ...f, stop_desk: '0' }));
         }
@@ -66,8 +66,9 @@ export default function Checkout() {
   }, [form.wilaya, settings?.delivery_fees]);
 
   const baseDelivery = deliveryForWilaya !== null ? deliveryForWilaya : parseFloat(settings?.delivery_pricing || '350');
+  const stopDesk = form.stop_desk === '1' && stopDeskFee !== null ? stopDeskFee : baseDelivery;
   const freeOver = parseFloat(settings?.shipping_free_over || '0');
-  const effectiveDelivery = freeOver > 0 && subtotal >= freeOver ? 0 : baseDelivery;
+  const effectiveDelivery = freeOver > 0 && subtotal >= freeOver ? 0 : (form.stop_desk === '1' ? stopDesk : baseDelivery);
   const total = subtotal + effectiveDelivery;
 
   const set = (k: string) => (e: React.ChangeEvent<any>) => {

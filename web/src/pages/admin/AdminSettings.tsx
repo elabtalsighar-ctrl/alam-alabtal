@@ -148,39 +148,17 @@ export default function AdminSettings() {
           <button type="button" onClick={async ()=>{
           setTesting(true);
           try{
-            const faqContent = JSON.stringify(faqs.filter(f => f.q && f.a));
-            const { faq_content: _omit, ...payload } = form;
-            await api.updateSettings({ ...payload, faq_content: faqContent });
+            const token = localStorage.getItem('admin_token');
+            const r = await fetch('/api/ecotrack/fetch-fees', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+              body: JSON.stringify({ token: form.ecotrack_token || '' })
+            });
+            const j = await r.json();
+            if (!r.ok) throw new Error(j.error || 'فشل');
+            if (j.fees) setForm(f=>({...f, delivery_fees: JSON.stringify(j.fees), ecotrack_token: form.ecotrack_token}));
             await refresh();
-            const r=await fetch('/api/ecotrack/fees');
-            const j=await r.json();
-            if(j._debug === 'no_token') throw new Error('أدخل Token Ecotrack أولاً ثم احفظ');
-            let feesMap: Record<string,string> = {};
-            const extractFromArr = (arr: any[]) => {
-              arr.forEach((item:any)=>{
-                const code=String(item.wilaya_id || item.code_wilaya || item.id || '');
-                const price=String(item.tarif || item.price || item.fee || item.montant || '400');
-                if(code) feesMap[code]=price;
-              });
-            };
-            if(Array.isArray(j)){
-              extractFromArr(j);
-            } else if(j && typeof j === 'object') {
-              if(j.livraison && Array.isArray(j.livraison)){
-                extractFromArr(j.livraison);
-              } else if(j.fees){
-                feesMap=j.fees;
-              } else if(j.data && Array.isArray(j.data)){
-                extractFromArr(j.data);
-              }
-            }
-            if(Object.keys(feesMap).length){
-              setForm(f=>({...f, delivery_fees: JSON.stringify(feesMap)}));
-              await api.updateSettings({ delivery_fees: JSON.stringify(feesMap) });
-              notify(`تم جلب ${Object.keys(feesMap).length} سعر من Ecotrack`);
-            } else {
-              notify('لم يتم العثور على أسعار. تحقق من Token Ecotrack', 'error');
-            }
+            notify(`تم جلب ${j.count || 0} سعر من Ecotrack`);
           }catch(err:any){ notify(err.message,'error'); } finally{ setTesting(false); }
         }} disabled={testing} className="rounded-xl bg-brand-600 px-4 py-2 text-sm font-bold text-white hover:bg-brand-700 disabled:opacity-50">
           {testing ? 'جارٍ الجلب...' : 'حفظ وأجلب الأسعار من Ecotrack'}
