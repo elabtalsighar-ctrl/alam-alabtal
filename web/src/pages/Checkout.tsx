@@ -200,15 +200,22 @@ export default function Checkout() {
               </Field>
             </div>
             {form.wilaya && (
-              <p className="text-xs font-bold text-brand-600">
-                تكلفة التوصيل إلى {form.wilaya.split(' - ')[1] || form.wilaya}: {effectiveDelivery === 0 ? 'مجاني 🎉' : formatPrice(effectiveDelivery)}
-                {form.stop_desk === '0' && stopDeskFee !== null && deliveryForWilaya !== null && stopDeskFee < deliveryForWilaya && (
-                  <span className="text-slate-400 mr-1">(المكتب: {formatPrice(stopDeskFee)})</span>
-                )}
-                {form.stop_desk === '1' && deliveryForWilaya !== null && stopDeskFee !== null && deliveryForWilaya > stopDeskFee && (
-                  <span className="text-slate-400 mr-1">(المنزل: {formatPrice(deliveryForWilaya)})</span>
-                )}
-              </p>
+              <div className="rounded-xl bg-brand-50 p-3 text-xs font-bold text-brand-600 space-y-1">
+                <p>تكلفة التوصيل إلى {form.wilaya.split(' - ')[1] || form.wilaya}:</p>
+                <div className="flex items-center gap-4">
+                  {deliveryForWilaya !== null && (
+                    <span className={form.stop_desk === '0' ? 'text-brand-700' : 'text-slate-400'}>
+                      🏠 المنزل: {formatPrice(deliveryForWilaya)}
+                    </span>
+                  )}
+                  {stopDeskFee !== null && (
+                    <span className={form.stop_desk === '1' ? 'text-brand-700' : 'text-slate-400'}>
+                      📦 المكتب: {formatPrice(stopDeskFee)}
+                    </span>
+                  )}
+                </div>
+                {loadingFee && <p className="text-slate-400">جارٍ جلب السعر من Ecotrack...</p>}
+              </div>
             )}
 
             <Field label="العنوان بالتفصيل" error={errors.address}>
