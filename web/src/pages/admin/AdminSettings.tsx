@@ -148,20 +148,50 @@ export default function AdminSettings() {
           <button type="button" onClick={async ()=>{
           setTesting(true);
           try{
-            const token = localStorage.getItem('admin_token');
-            const r = await fetch('/api/ecotrack/fetch-fees', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
-              body: JSON.stringify({ token: form.ecotrack_token || '' })
-            });
-            const j = await r.json();
-            if (!r.ok) throw new Error(j.error || 'فشل');
-            if (j.fees) setForm(f=>({...f, delivery_fees: JSON.stringify(j.fees), ecotrack_token: form.ecotrack_token}));
+            const faqContent = JSON.stringify(faqs.filter(f => f.q && f.a));
+            const { faq_content: _omit, ...payload } = form;
+            await api.updateSettings({ ...payload, faq_content: faqContent });
             await refresh();
-            notify(`تم جلب ${j.count || 0} سعر من Ecotrack`);
+            notify('تم حفظ Token Ecotrack');
           }catch(err:any){ notify(err.message,'error'); } finally{ setTesting(false); }
-        }} disabled={testing} className="rounded-xl bg-brand-600 px-4 py-2 text-sm font-bold text-white hover:bg-brand-700 disabled:opacity-50">
-          {testing ? 'جارٍ الجلب...' : 'حفظ وأجلب الأسعار من Ecotrack'}
+        }} disabled={testing || !form.ecotrack_token} className="rounded-xl bg-brand-600 px-4 py-2 text-sm font-bold text-white hover:bg-brand-700 disabled:opacity-50">
+          {testing ? 'جارٍ الحفظ...' : 'حفظ Token Ecotrack'}
+        </button>
+        <button type="button" onClick={async ()=>{
+          setTesting(true);
+          try{
+            const r=await fetch('/api/ecotrack/fees');
+            const j=await r.json();
+            if(j._debug === 'no_token') throw new Error('أدخل واحفظ Token Ecotrack أولاً');
+            let feesMap: Record<string,string> = {};
+            const extractFromArr = (arr: any[]) => {
+              arr.forEach((item:any)=>{
+                const code=String(item.wilaya_id || item.code_wilaya || item.id || '');
+                const price=String(item.tarif || item.price || item.fee || item.montant || '400');
+                if(code) feesMap[code]=price;
+              });
+            };
+            if(Array.isArray(j)){
+              extractFromArr(j);
+            } else if(j && typeof j === 'object') {
+              if(j.livraison && Array.isArray(j.livraison)){
+                extractFromArr(j.livraison);
+              } else if(j.fees){
+                feesMap=j.fees;
+              } else if(j.data && Array.isArray(j.data)){
+                extractFromArr(j.data);
+              }
+            }
+            if(Object.keys(feesMap).length){
+              await api.updateSettings({ delivery_fees: JSON.stringify(feesMap) });
+              setForm(f=>({...f, delivery_fees: JSON.stringify(feesMap)}));
+              notify(`تم جلب ${Object.keys(feesMap).length} سعر من Ecotrack`);
+            } else {
+              notify('لم يتم العثور على أسعار. تحقق من Token Ecotrack', 'error');
+            }
+          }catch(err:any){ notify(err.message,'error'); } finally{ setTesting(false); }
+        }} disabled={testing} className="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-bold text-white hover:bg-emerald-700 disabled:opacity-50">
+          {testing ? 'جارٍ الجلب...' : 'جلب الأسعار من Ecotrack'}
         </button>
         </div>
         <div className="grid max-h-96 grid-cols-2 gap-3 overflow-y-auto rounded-xl border border-slate-100 p-3 sm:grid-cols-3">
