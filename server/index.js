@@ -914,4 +914,42 @@ app.listen(PORT, async () => {
   if (!process.env.ADMIN_PASSWORD) {
     console.log('[WARNING] Set ADMIN_PASSWORD env var to change the default admin password.');
   }
+
+  // Auto-fetch Ecotrack fees on startup if token exists but fees need refresh
+  try {
+    const s = getSettings();
+    const token = (s.ecotrack_token || '').trim();
+    if (token) {
+      const fees = JSON.parse(s.delivery_fees || '{}');
+      const firstFee = fees['1'];
+      if (!firstFee || typeof firstFee === 'number') {
+        console.log('[STARTUP] Auto-fetching Ecotrack fees...');
+        const baseUrl = (s.ecotrack_base_url || 'https://anderson-ecommerce.ecotrack.dz').replace(/\/$/, '');
+        const r = await fetch(`${baseUrl}/api/v1/get/fees?api_token=${encodeURIComponent(token)}`);
+        const j = await r.json();
+        const feesMap = {};
+        const arr = j.livraison || (Array.isArray(j) ? j : null);
+        if (Array.isArray(arr)) {
+          arr.forEach(item => {
+            const code = String(item.wilaya_id || '');
+            const home = parseFloat(item.tarif || '0');
+            const sd = parseFloat(item.tarif_stopdesk || '0');
+            if (code && home > 0) feesMap[code] = { home: String(home), stop_desk: sd > 0 ? String(sd) : String(home) };
+          });
+        }
+        if (Object.keys(feesMap).length) {
+          updateSettings({ delivery_fees: JSON.stringify(feesMap) });
+          console.log(`[STARTUP] Auto-fetched fees for ${Object.keys(feesMap).length} wilayas`);
+        } else {
+          console.log('[STARTUP] No fees returned from Ecotrack');
+        }
+      } else {
+        console.log('[STARTUP] Ecotrack fees already in new format, skipping fetch');
+      }
+    } else {
+      console.log('[STARTUP] No Ecotrack token set, skipping fee fetch');
+    }
+  } catch (e) {
+    console.log('[STARTUP] Auto-fetch fees failed:', e.message);
+  }
 });

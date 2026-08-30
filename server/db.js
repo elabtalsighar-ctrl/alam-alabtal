@@ -142,19 +142,19 @@ const DEFAULT_SETTINGS = {
   instagram_url: '',
   facebook_url: '',
   tiktok_url: '',
-  contact_phone: '0550 00 00 00',
-  contact_email: 'contact@example.com',
+  contact_phone: process.env.CONTACT_PHONE || '0796389228',
+  contact_email: process.env.CONTACT_EMAIL || 'elabtalsighar@gmail.com',
   delivery_pricing: '350',
   delivery_info: 'التوصيل متوفر لمختلف ولايات الجزائر. تكلفة التوصيل 350 دج لمعظم الولايات.',
   delivery_time: 'من 2 إلى 5 أيام عمل',
   low_stock_threshold: '5',
   shipping_free_over: '0',
   google_sheets_url: '',
-  ecotrack_token: '',
-  ecotrack_enabled: '0',
-  ecotrack_base_url: 'https://anderson-ecommerce.ecotrack.dz',
-  facebook_pixel_id: '',
-  delivery_fees: JSON.stringify(Object.fromEntries(Array.from({length:58},(_,i)=>[String(i+1), i<8 || [9,10,15,16,19,21,23,25,26,35,42].includes(i+1) ? 400 : 600])))
+  ecotrack_token: process.env.ECOTRACK_TOKEN || '',
+  ecotrack_enabled: process.env.ECOTRACK_ENABLED || '0',
+  ecotrack_base_url: process.env.ECOTRACK_BASE_URL || 'https://anderson-ecommerce.ecotrack.dz',
+  facebook_pixel_id: process.env.FACEBOOK_PIXEL_ID || '',
+  delivery_fees: process.env.DELIVERY_FEES || JSON.stringify(Object.fromEntries(Array.from({length:58},(_,i)=>[String(i+1), i<8 || [9,10,15,16,19,21,23,25,26,35,42].includes(i+1) ? 400 : 600])))
 };
 
 // node:sqlite doesn't support placeholders in INSERT OR IGNORE the same way with bound params? It does.

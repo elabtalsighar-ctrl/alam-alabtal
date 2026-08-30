@@ -10,3 +10,9 @@ services:
         value: production
       - key: JWT_SECRET
         generateValue: true
+      - key: ECOTRACK_TOKEN
+        sync: false
+      - key: ECOTRACK_ENABLED
+        value: "1"
+      - key: ECOTRACK_BASE_URL
+        value: https://anderson-ecommerce.ecotrack.dz
