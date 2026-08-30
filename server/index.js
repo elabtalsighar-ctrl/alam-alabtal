@@ -171,13 +171,29 @@ app.get('/api/ecotrack/communes', async (req, res) => {
 
 app.get('/api/ecotrack/fees', async (req, res) => {
   try {
-    const { baseUrl, token } = (() => { const s=getSettings(); return { baseUrl:(s.ecotrack_base_url||'https://anderson-ecommerce.ecotrack.dz').replace(/\/$/,''), token:(s.ecotrack_token||'').trim() }; })();
-    if (!token) return res.json({ fees: {} });
-    const r = await fetch(`${baseUrl}/api/v1/get/fees?api_token=${encodeURIComponent(token)}`);
+    const s = getSettings();
+    const baseUrl = (req.query.base_url || s.ecotrack_base_url || 'https://anderson-ecommerce.ecotrack.dz').replace(/\/$/, '');
+    const token = (req.query.token || s.ecotrack_token || '').trim();
+    if (!token) {
+      console.log('[Ecotrack] No token in settings or request');
+      return res.json({ fees: {}, _debug: 'no_token' });
+    }
+    const url = `${baseUrl}/api/v1/get/fees?api_token=${encodeURIComponent(token)}`;
+    console.log('[Ecotrack] Fetching fees from:', url);
+    const r = await fetch(url);
     const t = await r.text();
-    let j=null; try{ j=JSON.parse(t);}catch{}
-    return res.json(j || {});
-  } catch (e) { res.status(500).json({ error: e.message }); }
+    console.log('[Ecotrack] Response status:', r.status, 'body preview:', t.substring(0, 300));
+    let j = null;
+    try { j = JSON.parse(t); } catch {}
+    if (!j || (typeof j === 'object' && Object.keys(j).length === 0)) {
+      console.log('[Ecotrack] Empty or unparseable response');
+      return res.json({ fees: {}, _debug: 'empty_response', raw: t.substring(0, 500) });
+    }
+    return res.json(j);
+  } catch (e) {
+    console.error('[Ecotrack] Error:', e.message);
+    res.status(500).json({ error: e.message });
+  }
 });
 
 const _feeCache = {};

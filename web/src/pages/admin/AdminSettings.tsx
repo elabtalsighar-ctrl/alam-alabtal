@@ -146,8 +146,13 @@ export default function AdminSettings() {
         <button type="button" onClick={async ()=>{
           setTesting(true);
           try{
-            const r=await fetch('/api/ecotrack/fees');
+            const params = new URLSearchParams();
+            if(form.ecotrack_token) params.set('token', form.ecotrack_token);
+            if(form.ecotrack_base_url) params.set('base_url', form.ecotrack_base_url);
+            const qs = params.toString() ? `?${params.toString()}` : '';
+            const r=await fetch(`/api/ecotrack/fees${qs}`);
             const j=await r.json();
+            if(j._debug === 'no_token') throw new Error('أدخل Token Ecotrack أولاً');
             let feesMap: Record<string,string> = {};
             const extractFromArr = (arr: any[]) => {
               arr.forEach((item:any)=>{
@@ -169,9 +174,10 @@ export default function AdminSettings() {
             }
             if(Object.keys(feesMap).length){
               setForm(f=>({...f, delivery_fees: JSON.stringify(feesMap)}));
-              notify('تم جلب الأسعار من Ecotrack');
+              notify(`تم جلب ${Object.keys(feesMap).length} سعر من Ecotrack`);
             } else {
-              notify('لم يتم العثور على أسعار في رد Ecotrack. تحقق من الـ Token', 'error');
+              const raw = j._debug ? ` (${j._debug})` : '';
+              notify('لم يتم العثور على أسعار في رد Ecotrack. تحقق من الـ Token' + raw, 'error');
             }
           }catch(err:any){ notify(err.message,'error'); } finally{ setTesting(false); }
         }} disabled={testing} className="mb-4 rounded-xl bg-brand-600 px-4 py-2 text-sm font-bold text-white hover:bg-brand-700 disabled:opacity-50">
