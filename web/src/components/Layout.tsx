@@ -5,7 +5,6 @@ import Footer from './Footer';
 import CartDrawer from './CartDrawer';
 import FloatingButtons from './FloatingButtons';
 import { useSettings } from '../context/SettingsContext';
-import { trackPageView } from '../lib/pixel';
 
 declare global {
   interface Window {
@@ -28,24 +27,28 @@ function FacebookPixel() {
   const { pathname } = useLocation();
 
   useEffect(() => {
-    if (!pixelId) return;
+    if (!pixelId || window.fbq) return;
 
-    if (!window.fbq) {
-      const script = document.createElement('script');
-      script.src = 'https://connect.facebook.net/en_US/fbevents.js';
-      script.async = true;
-      document.head.appendChild(script);
+    window._fbq = window._fbq || [];
+    const fbqFn: any = function() {
+      fbqFn.callMethod ? fbqFn.callMethod.apply(fbqFn, arguments) : fbqFn.queue.push(arguments);
+    };
+    fbqFn.queue = [];
+    window.fbq = fbqFn;
 
-      window._fbq = window._fbq || [];
-      const fbqFn: (...args: any[]) => void = function () {
-        window._fbq!.push(arguments);
-      };
-      fbqFn('init', pixelId);
-      window.fbq = fbqFn;
-    }
+    const script = document.createElement('script');
+    script.src = 'https://connect.facebook.net/en_US/fbevents.js';
+    script.async = true;
+    document.head.appendChild(script);
 
-    trackPageView();
-  }, [pixelId, pathname]);
+    window.fbq('init', pixelId);
+    window.fbq('track', 'PageView');
+  }, [pixelId]);
+
+  useEffect(() => {
+    if (!pixelId || !window.fbq) return;
+    window.fbq('track', 'PageView');
+  }, [pathname, pixelId]);
 
   return null;
 }
