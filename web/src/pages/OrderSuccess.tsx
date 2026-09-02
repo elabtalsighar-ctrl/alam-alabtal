@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { formatPrice, formatDate } from '../lib/api';
 import { useSettings } from '../context/SettingsContext';
+import { trackPurchase } from '../lib/pixel';
 import type { CartItem, Order } from '../lib/types';
 
 interface OrderData {
@@ -25,11 +26,14 @@ export default function OrderSuccess() {
 
   useEffect(() => {
     if (state.order && window.fbq && settings?.facebook_pixel_id) {
-      window.fbq('track', 'Purchase', {
+      trackPurchase({
         value: state.order.total,
-        currency: 'DZD',
-        content_type: 'product',
-        content_ids: state.order.items.map(i => i.name)
+        order_number: state.order.order_number,
+        contents: state.order.items.map(i => ({
+          id: String(i.product_id),
+          quantity: i.quantity,
+          item_price: i.price
+        }))
       });
     }
   }, [state.order]);

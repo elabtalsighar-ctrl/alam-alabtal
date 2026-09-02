@@ -6,6 +6,7 @@ import { useCart } from '../context/CartContext';
 import { useSettings } from '../context/SettingsContext';
 import { useToast } from '../components/Toast';
 import { useSEO } from '../lib/seo';
+import { trackViewProduct } from '../lib/pixel';
 import { Spinner, ImageWithFallback, Stars } from '../components/ui';
 import { CartIcon, TruckIcon, LockIcon, CheckCircleIcon, MinusIcon, PlusIcon, ShieldIcon } from '../components/icons';
 
@@ -39,12 +40,11 @@ export default function ProductDetails() {
         setProduct(p);
         setActiveImage(p.images && p.images.length ? p.images[0] : p.image);
         if (window.fbq && settings?.facebook_pixel_id) {
-          window.fbq('track', 'ViewContent', {
-            content_name: p.name,
-            content_ids: [p.slug],
-            content_type: 'product',
-            value: p.price,
-            currency: 'DZD'
+          trackViewProduct({
+            name: p.name,
+            slug: p.slug,
+            price: p.price,
+            category_name: p.category_name
           });
         }
         const revs = await api.reviews(true);

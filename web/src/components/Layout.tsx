@@ -5,6 +5,7 @@ import Footer from './Footer';
 import CartDrawer from './CartDrawer';
 import FloatingButtons from './FloatingButtons';
 import { useSettings } from '../context/SettingsContext';
+import { trackPageView } from '../lib/pixel';
 
 declare global {
   interface Window {
@@ -24,30 +25,27 @@ function ScrollToTop() {
 function FacebookPixel() {
   const { settings } = useSettings();
   const pixelId = settings?.facebook_pixel_id?.trim();
+  const { pathname } = useLocation();
 
   useEffect(() => {
     if (!pixelId) return;
 
-    const loadAndTrack = () => {
-      if (!window.fbq) {
-        const script = document.createElement('script');
-        script.src = 'https://connect.facebook.net/en_US/fbevents.js';
-        script.async = true;
-        document.head.appendChild(script);
+    if (!window.fbq) {
+      const script = document.createElement('script');
+      script.src = 'https://connect.facebook.net/en_US/fbevents.js';
+      script.async = true;
+      document.head.appendChild(script);
 
-        window._fbq = window._fbq || [];
-        const fbqFn: (...args: any[]) => void = function () {
-          window._fbq!.push(arguments);
-        };
-        fbqFn('init', pixelId);
-        window.fbq = fbqFn;
-      }
+      window._fbq = window._fbq || [];
+      const fbqFn: (...args: any[]) => void = function () {
+        window._fbq!.push(arguments);
+      };
+      fbqFn('init', pixelId);
+      window.fbq = fbqFn;
+    }
 
-      window.fbq!('track', 'PageView');
-    };
-
-    loadAndTrack();
-  }, [pixelId]);
+    trackPageView();
+  }, [pixelId, pathname]);
 
   return null;
 }

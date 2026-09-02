@@ -5,6 +5,7 @@ import type { Category, Product } from '../lib/types';
 import ProductCard from '../components/ProductCard';
 import { PageLoader, EmptyState } from '../components/ui';
 import { SearchIcon, ChevronDownIcon } from '../components/icons';
+import { trackSearch, trackViewCategory } from '../lib/pixel';
 
 const AGE_GROUPS = ['0 - 2', '2 - 4', '3 - 6', '4 - 8', '6 - 10', '8 - 12'];
 
@@ -79,7 +80,7 @@ export default function Products() {
 
       {/* Search */}
       <form
-        onSubmit={e => { e.preventDefault(); const fd = new FormData(e.currentTarget); updateParam('q', String(fd.get('q') || '')); }}
+        onSubmit={e => { e.preventDefault(); const fd = new FormData(e.currentTarget); const searchQuery = String(fd.get('q') || ''); updateParam('q', searchQuery); if (searchQuery.trim()) trackSearch(searchQuery); }}
         className="mx-auto mb-6 max-w-xl"
         role="search"
       >

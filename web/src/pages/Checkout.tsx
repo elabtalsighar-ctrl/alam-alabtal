@@ -5,6 +5,7 @@ import { useCart } from '../context/CartContext';
 import { useSettings } from '../context/SettingsContext';
 import { useToast } from '../components/Toast';
 import { WILAYAS, validateAlgerianPhone } from '../lib/utils';
+import { trackInitiateCheckout } from '../lib/pixel';
 import { EmptyState } from '../components/ui';
 import { LockIcon, TruckIcon } from '../components/icons';
 
@@ -131,10 +132,14 @@ export default function Checkout() {
       });
       clear();
       if (window.fbq && settings?.facebook_pixel_id) {
-        window.fbq('track', 'InitiateCheckout', {
+        trackInitiateCheckout({
           value: total,
-          currency: 'DZD',
-          num_items: items.length
+          num_items: items.length,
+          contents: items.map(i => ({
+            id: String(i.product_id),
+            quantity: i.quantity,
+            item_price: i.price
+          }))
         });
       }
       const order = { ...res.order, items };

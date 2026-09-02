@@ -3,6 +3,7 @@ import { useSettings } from '../context/SettingsContext';
 import { useToast } from '../components/Toast';
 import { useSEO } from '../lib/seo';
 import { api } from '../lib/api';
+import { trackLead } from '../lib/pixel';
 import { WhatsAppIcon } from '../components/icons';
 
 export default function Contact() {
@@ -33,6 +34,7 @@ export default function Contact() {
     setSending(true);
     try {
       await api.contact(form);
+      trackLead({ content_name: 'Contact Form' });
       notify('تم إرسال رسالتك بنجاح، سنتواصل معك قريباً.');
       setForm({ name: '', phone: '', message: '' });
     } catch (err: any) {

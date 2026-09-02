@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import type { CartItem } from '../lib/types';
+import { trackAddToCart } from '../lib/pixel';
 
 const STORAGE_KEY = 'alam_cart';
 
@@ -39,6 +40,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const subtotal = items.reduce((s, i) => s + i.price * i.quantity, 0);
 
   const add = (item: CartItem) => {
+    trackAddToCart({ name: item.name, product_id: item.product_id, price: item.price, quantity: item.quantity });
     setItems(prev => {
       const existing = prev.find(i => i.product_id === item.product_id);
       if (existing) {
