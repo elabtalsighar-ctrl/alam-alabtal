@@ -29,20 +29,24 @@ function FacebookPixel() {
   useEffect(() => {
     if (!pixelId || window.fbq) return;
 
-    window._fbq = window._fbq || [];
-    const fbqFn: any = function() {
-      fbqFn.callMethod ? fbqFn.callMethod.apply(fbqFn, arguments) : fbqFn.queue.push(arguments);
+    (window as any)._fbq = [];
+    const q: any[] = [];
+    const fn: any = function () {
+      fn.callMethod
+        ? fn.callMethod.apply(fn, arguments)
+        : q.push(arguments);
     };
-    fbqFn.queue = [];
-    window.fbq = fbqFn;
+    fn.queue = q;
+    (window as any).fbq = fn;
 
     const script = document.createElement('script');
     script.src = 'https://connect.facebook.net/en_US/fbevents.js';
     script.async = true;
     document.head.appendChild(script);
 
-    window.fbq('init', pixelId);
-    window.fbq('track', 'PageView');
+    fn('init', pixelId);
+    fn('track', 'PageView');
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pixelId]);
 
   useEffect(() => {
