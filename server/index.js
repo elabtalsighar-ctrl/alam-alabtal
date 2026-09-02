@@ -41,7 +41,7 @@ const contactLimiter = rateLimit({ windowMs: 60 * 1000, max: 3, standardHeaders:
 
 // ---------- Auth helpers ----------
 function signToken(user) {
-  return jwt.sign({ id: user.id, email: user.email, role: user.role }, JWT_SECRET, { expiresIn: '1d' });
+  return jwt.sign({ id: user.id, email: user.email, role: user.role }, JWT_SECRET, { expiresIn: '30d' });
 }
 
 function requireAuth(req, res, next) {
@@ -888,6 +888,14 @@ app.get('/sitemap.xml', (req, res) => {
   ];
   const xml = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls.map(u => `  <url><loc>${u}</loc></url>`).join('\n')}\n</urlset>`;
   res.type('application/xml').send(xml);
+});
+
+// Logout page - clears token and redirects to admin
+app.get('/logout', (req, res) => {
+  res.send(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>Logout</title></head><body><script>
+localStorage.removeItem('admin_token');
+window.location.href = '/admin';
+</script></body></html>`);
 });
 
 // Serve built frontend
