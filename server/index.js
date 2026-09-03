@@ -13,7 +13,6 @@ import { seed, slugify } from './seed.js';
 import { pushOrderToEcotrack, testEcotrackConnection } from './ecotrack.js';
 import { v2 as cloudinary } from 'cloudinary';
 import { restoreFromB2, startAutoBackup } from './b2-backup.js';
-import { restoreFromB2, startAutoBackup } from './b2-backup.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
@@ -961,12 +960,6 @@ app.listen(PORT, async () => {
   // Always seed (INSERT OR IGNORE - safe to run always)
   const result = seed();
   console.log(`Seed: ${result}`);
-
-  // Start B2 backup after 10s (non-blocking, won't affect startup)
-  setTimeout(() => {
-    restoreFromB2().catch(() => {});
-    startAutoBackup();
-  }, 10000);
   if (!process.env.ADMIN_PASSWORD) {
     console.log('[WARNING] Set ADMIN_PASSWORD env var to change the default admin password.');
   }
