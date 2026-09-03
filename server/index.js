@@ -12,7 +12,6 @@ import { db, getSettings, updateSettings } from './db.js';
 import { seed, slugify } from './seed.js';
 import { pushOrderToEcotrack, testEcotrackConnection } from './ecotrack.js';
 import { v2 as cloudinary } from 'cloudinary';
-import { restoreFromB2, startAutoBackup } from './b2-backup.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
