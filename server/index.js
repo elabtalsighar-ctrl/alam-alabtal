@@ -12,6 +12,8 @@ import { db, getSettings, updateSettings } from './db.js';
 import { seed, slugify } from './seed.js';
 import { pushOrderToEcotrack, testEcotrackConnection } from './ecotrack.js';
 import { v2 as cloudinary } from 'cloudinary';
+import { restoreFromB2, startAutoBackup } from './b2-backup.js';
+import { restoreFromB2, startAutoBackup } from './b2-backup.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
@@ -955,8 +957,15 @@ app.use((err, req, res, next) => {
 
 app.listen(PORT, async () => {
   console.log(`Alam Al-Abtal Al-Sighar server running on http://localhost:${PORT}`);
+
+  // Restore DB from B2 backup BEFORE seed
+  await restoreFromB2();
+
   const result = seed();
   console.log(`Seed: ${result}`);
+
+  // Start auto-backup to B2
+  startAutoBackup();
   if (!process.env.ADMIN_PASSWORD) {
     console.log('[WARNING] Set ADMIN_PASSWORD env var to change the default admin password.');
   }
