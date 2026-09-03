@@ -11,6 +11,7 @@ import bcrypt from 'bcryptjs';
 import { db, getSettings, updateSettings } from './db.js';
 import { seed, slugify } from './seed.js';
 import { pushOrderToEcotrack, testEcotrackConnection } from './ecotrack.js';
+import { v2 as cloudinary } from 'cloudinary';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
@@ -21,6 +22,14 @@ if (!process.env.JWT_SECRET) {
   process.exit(1);
 }
 const JWT_SECRET = process.env.JWT_SECRET;
+
+// Cloudinary config
+if (process.env.CLOUDINARY_URL) {
+  cloudinary.config({ cloud_url: process.env.CLOUDINARY_URL });
+  console.log('[UPLOAD] Cloudinary configured');
+} else {
+  console.log('[UPLOAD] No CLOUDINARY_URL, using local /tmp (images lost on restart)');
+}
 const UPLOAD_DIR = path.join('/tmp', 'alam-uploads');
 if (!fs.existsSync(UPLOAD_DIR)) fs.mkdirSync(UPLOAD_DIR, { recursive: true });
 
@@ -73,7 +82,13 @@ const storage = multer.diskStorage({
   }
 });
 const upload = multer({
-  storage,
+  storage: process.env.CLOUDINARY_URL ? multer.memoryStorage() : multer.diskStorage({
+    destination: (req, file, cb) => cb(null, UPLOAD_DIR),
+    filename: (req, file, cb) => {
+      const ext = path.extname(file.originalname || '').toLowerCase();
+      cb(null, `${Date.now()}-${Math.round(Math.random() * 1e9)}${ext}`);
+    }
+  }),
   limits: { fileSize: 5 * 1024 * 1024 },
   fileFilter: (req, file, cb) => {
     if (/^image\//.test(file.mimetype)) cb(null, true);
@@ -355,9 +370,23 @@ app.get('/api/auth/me', requireAuth, (req, res) => {
 });
 
 // ---------- Upload ----------
-app.post('/api/upload', requireAuth, requireAdmin, upload.single('file'), (req, res) => {
+app.post('/api/upload', requireAuth, requireAdmin, upload.single('file'), async (req, res) => {
   if (!req.file) return res.status(400).json({ error: 'لم يتم رفع أي ملف.' });
-  res.json({ url: `/uploads/${req.file.filename}` });
+  try {
+    if (process.env.CLOUDINARY_URL) {
+      const b64 = req.file.buffer.toString('base64');
+      const dataURI = `data:${req.file.mimetype};base64,${b64}`;
+      const result = await cloudinary.uploader.upload(dataURI, {
+        folder: 'alam-alabtal',
+        transformation: [{ width: 800, height: 800, crop: 'limit', quality: 'auto' }]
+      });
+      return res.json({ url: result.secure_url });
+    }
+    res.json({ url: `/uploads/${req.file.filename}` });
+  } catch (e) {
+    console.error('[UPLOAD] Error:', e.message);
+    res.status(500).json({ error: 'فشل رفع الملف.' });
+  }
 });
 
 // ---------- Categories ----------
