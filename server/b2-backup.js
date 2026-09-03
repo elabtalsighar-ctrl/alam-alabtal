@@ -17,71 +17,67 @@ function getConfig() {
 async function getB2Auth(cfg) {
   if (cachedB2) return cachedB2;
   const auth = Buffer.from(`${cfg.accountId}:${cfg.appKey}`).toString('base64');
-  const res = await fetch('https://api.backblazeb2.com/b2api/v4/b2_authorize_account', {
-    headers: { Authorization: `Basic ${auth}` }
-  });
-  if (!res.ok) throw new Error(`B2 auth failed: ${res.status}`);
-  const data = await res.json();
-  // Find the bucket by name
-  const bucketRes = await fetch(`${data.apiUrl}/b2api/v4/b2_list_buckets`, {
-    method: 'POST',
-    headers: { Authorization: data.authorizationToken, 'Content-Type': 'application/json' },
-    body: JSON.stringify({})
-  });
-  if (!bucketRes.ok) throw new Error('Failed to list buckets');
-  const buckets = await bucketRes.json();
-  const bucket = buckets.buckets?.find(b => b.bucketName === cfg.bucket);
-  if (!bucket) throw new Error(`Bucket "${cfg.bucket}" not found`);
-  cachedB2 = { ...data, bucketId: bucket.bucketId };
-  return cachedB2;
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 10000);
+  try {
+    const res = await fetch('https://api.backblazeb2.com/b2api/v4/b2_authorize_account', {
+      headers: { Authorization: `Basic ${auth}` },
+      signal: controller.signal
+    });
+    if (!res.ok) throw new Error(`B2 auth failed: ${res.status}`);
+    const data = await res.json();
+
+    const bucketRes = await fetch(`${data.apiUrl}/b2api/v4/b2_list_buckets`, {
+      method: 'POST',
+      headers: { Authorization: data.authorizationToken, 'Content-Type': 'application/json' },
+      body: JSON.stringify({})
+    });
+    if (!bucketRes.ok) throw new Error('Failed to list buckets');
+    const buckets = await bucketRes.json();
+    const bucket = buckets.buckets?.find(b => b.bucketName === cfg.bucket);
+    if (!bucket) throw new Error(`Bucket "${cfg.bucket}" not found`);
+    cachedB2 = { ...data, bucketId: bucket.bucketId };
+    return cachedB2;
+  } finally {
+    clearTimeout(timeout);
+  }
 }
 
-function fileHash(filePath) {
-  try {
-    const stat = fs.statSync(filePath);
-    return `${stat.size}-${stat.mtimeMs}`;
-  } catch { return ''; }
+function fileHash(fp) {
+  try { const s = fs.statSync(fp); return `${s.size}-${s.mtimeMs}`; } catch { return ''; }
 }
 
 export async function restoreFromB2() {
   const cfg = getConfig();
-  if (!cfg) { console.log('[B2-BACKUP] No B2 credentials, skipping'); return false; }
-
+  if (!cfg) { console.log('[B2] No credentials, skipping'); return false; }
   try {
     const exists = fs.existsSync(DB_PATH) && fs.statSync(DB_PATH).size > 10000;
-    if (exists) { console.log('[B2-BACKUP] DB exists, skipping restore'); return false; }
+    if (exists) { console.log('[B2] DB exists, skipping restore'); return false; }
 
-    console.log('[B2-BACKUP] Downloading from B2...');
+    console.log('[B2] Restoring from backup...');
     const b2 = await getB2Auth(cfg);
-
-    // List files to find the DB
     const listRes = await fetch(`${b2.apiUrl}/b2api/v4/b2_list_file_names`, {
       method: 'POST',
       headers: { Authorization: b2.authorizationToken, 'Content-Type': 'application/json' },
       body: JSON.stringify({ bucketId: b2.bucketId, prefix: B2_KEY, maxFileCount: 1 })
     });
-    if (!listRes.ok) throw new Error('Failed to list files');
+    if (!listRes.ok) throw new Error('list failed');
     const listData = await listRes.json();
-    if (!listData.files || listData.files.length === 0) {
-      console.log('[B2-BACKUP] No backup found');
-      return false;
-    }
+    if (!listData.files || listData.files.length === 0) { console.log('[B2] No backup found'); return false; }
 
-    // Download
     const downloadRes = await fetch(`${b2.downloadUrl}/file/${b2.bucketId}/${B2_KEY}`, {
       headers: { Authorization: b2.authorizationToken }
     });
-    if (!downloadRes.ok) throw new Error('Download failed');
-
+    if (!downloadRes.ok) throw new Error('download failed');
     const buffer = Buffer.from(await downloadRes.arrayBuffer());
     const dir = path.dirname(DB_PATH);
     if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
     fs.writeFileSync(DB_PATH, buffer);
     lastUploadHash = fileHash(DB_PATH);
-    console.log(`[B2-BACKUP] Restored DB (${buffer.length} bytes)`);
+    console.log(`[B2] Restored (${buffer.length} bytes)`);
     return true;
   } catch (e) {
-    console.error('[B2-BACKUP] Restore failed:', e.message);
+    console.error('[B2] Restore error:', e.message);
     return false;
   }
 }
@@ -89,24 +85,19 @@ export async function restoreFromB2() {
 export async function backupToB2() {
   const cfg = getConfig();
   if (!cfg) return;
-
   try {
-    const currentHash = fileHash(DB_PATH);
-    if (currentHash === lastUploadHash) return;
+    const h = fileHash(DB_PATH);
+    if (h === lastUploadHash) return;
     if (!fs.existsSync(DB_PATH)) return;
-
     const data = fs.readFileSync(DB_PATH);
     const b2 = await getB2Auth(cfg);
-
-    // Get upload URL
     const urlRes = await fetch(`${b2.apiUrl}/b2api/v4/b2_get_upload_url`, {
       method: 'POST',
       headers: { Authorization: b2.authorizationToken, 'Content-Type': 'application/json' },
       body: JSON.stringify({ bucketId: b2.bucketId })
     });
-    if (!urlRes.ok) throw new Error('Failed to get upload URL');
+    if (!urlRes.ok) return;
     const urlData = await urlRes.json();
-
     const uploadRes = await fetch(urlData.uploadUrl, {
       method: 'POST',
       headers: {
@@ -117,19 +108,18 @@ export async function backupToB2() {
       },
       body: data
     });
-    if (!uploadRes.ok) throw new Error(`Upload failed: ${uploadRes.status}`);
-    lastUploadHash = fileHash(DB_PATH);
-    console.log(`[B2-BACKUP] Uploaded DB (${data.length} bytes)`);
-  } catch (e) {
-    console.error('[B2-BACKUP] Upload failed:', e.message);
-  }
+    if (uploadRes.ok) {
+      lastUploadHash = h;
+      console.log(`[B2] Backed up (${data.length} bytes)`);
+    }
+  } catch {}
 }
 
 export function startAutoBackup() {
   const cfg = getConfig();
   if (!cfg) return;
   setInterval(backupToB2, 30000);
-  process.on('SIGTERM', async () => { await backupToB2().catch(() => {}); process.exit(0); });
-  process.on('SIGINT', async () => { await backupToB2().catch(() => {}); process.exit(0); });
-  console.log('[B2-BACKUP] Auto-backup started');
+  process.on('SIGTERM', () => { backupToB2().finally(() => process.exit(0)); });
+  process.on('SIGINT', () => { backupToB2().finally(() => process.exit(0)); });
+  console.log('[B2] Auto-backup enabled');
 }
