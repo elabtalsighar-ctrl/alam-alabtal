@@ -958,17 +958,15 @@ app.use((err, req, res, next) => {
 app.listen(PORT, async () => {
   console.log(`Alam Al-Abtal Al-Sighar server running on http://localhost:${PORT}`);
 
-  // Try to restore DB from B2 (non-blocking, seed will run regardless)
-  restoreFromB2().then(restored => {
-    if (restored) console.log('[STARTUP] DB restored from B2');
-  }).catch(() => {});
-
   // Always seed (INSERT OR IGNORE - safe to run always)
   const result = seed();
   console.log(`Seed: ${result}`);
 
-  // Start auto-backup to B2
-  startAutoBackup();
+  // Start B2 backup after 10s (non-blocking, won't affect startup)
+  setTimeout(() => {
+    restoreFromB2().catch(() => {});
+    startAutoBackup();
+  }, 10000);
   if (!process.env.ADMIN_PASSWORD) {
     console.log('[WARNING] Set ADMIN_PASSWORD env var to change the default admin password.');
   }
