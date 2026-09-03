@@ -248,7 +248,7 @@ export default function AdminProducts() {
               <Field label="Specifications (format: Label: value, one per line)"><textarea className="input-field" rows={3} value={form.specifications} onChange={set('specifications')} /></Field>
             </div>
             <div className="sm:col-span-2">
-              <Field label="Sizes (comma separated, e.g: S, M, L, XL)"><input className="input-field" value={form.sizes} onChange={set('sizes')} placeholder="S, M, L, XL" /></Field>
+              <Field label="المقاسات (مفصولة بفواصل، مثال: 2-3 سنوات, 4-5 سنوات, 6-7 سنوات)"><input className="input-field" value={form.sizes} onChange={set('sizes')} placeholder="2-3 سنوات, 4-5 سنوات, 6-7 سنوات" /></Field>
             </div>
           </div>
 

@@ -191,7 +191,7 @@ export default function ProductDetails() {
 
           {product.sizes && product.sizes.length > 0 && (
             <div className="mt-4">
-              <span className="mb-2 block text-sm font-bold text-slate-700">المقاس</span>
+              <span className="mb-2 block text-sm font-bold text-slate-700">اختر المقاس</span>
               <div className="flex flex-wrap gap-2">
                 {product.sizes.map(size => (
                   <button
@@ -208,7 +208,7 @@ export default function ProductDetails() {
                 ))}
               </div>
               {!selectedSize && (
-                <p className="mt-1 text-xs text-berry-500">اختر المقاس المطلوب</p>
+                <p className="mt-1 text-xs text-berry-500">الرجاء اختيار المقاس المطلوب</p>
               )}
             </div>
           )}
