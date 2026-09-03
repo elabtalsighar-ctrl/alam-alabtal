@@ -119,7 +119,5 @@ export function startAutoBackup() {
   const cfg = getConfig();
   if (!cfg) return;
   setInterval(backupToB2, 30000);
-  process.on('SIGTERM', () => { backupToB2().finally(() => process.exit(0)); });
-  process.on('SIGINT', () => { backupToB2().finally(() => process.exit(0)); });
   console.log('[B2] Auto-backup enabled');
 }
