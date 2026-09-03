@@ -127,7 +127,8 @@ export default function Checkout() {
           product_name: i.name,
           unit_price: i.price,
           quantity: i.quantity,
-          image: i.image
+          image: i.image,
+          selected_size: i.selected_size || null
         }))
       });
       clear();
@@ -262,10 +263,11 @@ export default function Checkout() {
 
           <div className="max-h-64 space-y-3 overflow-y-auto pr-1">
             {items.map(i => (
-              <div key={i.product_id} className="flex items-center gap-3">
+              <div key={`${i.product_id}${i.selected_size || ''}`} className="flex items-center gap-3">
                 <img src={i.image || ''} alt={i.name} className="h-14 w-14 rounded-lg object-cover" loading="lazy" />
                 <div className="flex-1">
                   <p className="text-sm font-bold text-slate-800">{i.name}</p>
+                  {i.selected_size && <p className="text-xs font-bold text-brand-600">المقاس: {i.selected_size}</p>}
                   <p className="text-xs text-slate-500">الكمية: {i.quantity}</p>
                 </div>
                 <span className="text-sm font-bold text-slate-700">{formatPrice(i.price * i.quantity)}</span>

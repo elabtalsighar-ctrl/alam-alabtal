@@ -22,6 +22,7 @@ export default function ProductDetails() {
   const [activeImage, setActiveImage] = useState('');
   const [qty, setQty] = useState(1);
   const [reviews, setReviews] = useState<Review[]>([]);
+  const [selectedSize, setSelectedSize] = useState('');
 
   useSEO({
     title: product ? `${product.name} | عالم الأبطال الصغار` : 'عالم الأبطال الصغار',
@@ -75,6 +76,10 @@ export default function ProductDetails() {
 
   const handleAdd = () => {
     if (out) return;
+    if (product.sizes && product.sizes.length > 0 && !selectedSize) {
+      notify('الرجاء اختيار المقاس', 'error');
+      return;
+    }
     add({
       product_id: product.id,
       name: product.name,
@@ -83,7 +88,8 @@ export default function ProductDetails() {
       quantity: qty,
       image: product.image || '',
       slug: product.slug,
-      stock: product.stock
+      stock: product.stock,
+      selected_size: selectedSize || undefined
     });
     notify('تمت إضافة المنتج إلى السلة');
     open();
@@ -91,6 +97,10 @@ export default function ProductDetails() {
 
   const buyNow = () => {
     if (out) return;
+    if (product.sizes && product.sizes.length > 0 && !selectedSize) {
+      notify('الرجاء اختيار المقاس', 'error');
+      return;
+    }
     add({
       product_id: product.id,
       name: product.name,
@@ -99,7 +109,8 @@ export default function ProductDetails() {
       quantity: qty,
       image: product.image || '',
       slug: product.slug,
-      stock: product.stock
+      stock: product.stock,
+      selected_size: selectedSize || undefined
     });
     navigate('/checkout');
   };
@@ -175,6 +186,30 @@ export default function ProductDetails() {
           {product.recommended_age && (
             <div className="mt-4 inline-flex items-center gap-2 rounded-xl bg-brand-50 px-4 py-2 text-sm font-bold text-brand-700">
               🎂 العمر الموصى به: {product.recommended_age}
+            </div>
+          )}
+
+          {product.sizes && product.sizes.length > 0 && (
+            <div className="mt-4">
+              <span className="mb-2 block text-sm font-bold text-slate-700">المقاس</span>
+              <div className="flex flex-wrap gap-2">
+                {product.sizes.map(size => (
+                  <button
+                    key={size}
+                    onClick={() => setSelectedSize(size)}
+                    className={`rounded-xl border-2 px-4 py-2 text-sm font-bold transition ${
+                      selectedSize === size
+                        ? 'border-brand-600 bg-brand-50 text-brand-700'
+                        : 'border-slate-200 bg-white text-slate-600 hover:border-brand-300'
+                    }`}
+                  >
+                    {size}
+                  </button>
+                ))}
+              </div>
+              {!selectedSize && (
+                <p className="mt-1 text-xs text-berry-500">اختر المقاس المطلوب</p>
+              )}
             </div>
           )}
 

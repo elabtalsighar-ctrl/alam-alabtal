@@ -11,14 +11,14 @@ interface FormState {
   price: string; old_price: string; stock: string; category_id: string;
   recommended_age: string; keywords: string;
   is_new: boolean; is_bestseller: boolean; is_featured: boolean; enabled: boolean;
-  features: string; specifications: string;
+  features: string; specifications: string; sizes: string;
   image: string; images: string[];
 }
 
 const emptyForm: FormState = {
   name: '', short_description: '', description: '', price: '', old_price: '', stock: '0',
   category_id: '', recommended_age: '', keywords: '', is_new: false, is_bestseller: false,
-  is_featured: false, enabled: true, features: '', specifications: '', image: '', images: []
+  is_featured: false, enabled: true, features: '', specifications: '', sizes: '', image: '', images: []
 };
 
 export default function AdminProducts() {
@@ -60,7 +60,7 @@ export default function AdminProducts() {
       keywords: p.keywords || '', is_new: !!p.is_new, is_bestseller: !!p.is_bestseller,
       is_featured: !!p.is_featured, enabled: !!p.enabled,
       features: (p.features || []).join('\n'), specifications: (p.specifications || []).join('\n'),
-      image: p.image || '', images: p.images || []
+      sizes: (p.sizes || []).join(', '), image: p.image || '', images: p.images || []
     });
     setModalOpen(true);
   };
@@ -107,6 +107,7 @@ export default function AdminProducts() {
         is_new: form.is_new, is_bestseller: form.is_bestseller, is_featured: form.is_featured, enabled: form.enabled,
         features: form.features.split('\n').map(s => s.trim()).filter(Boolean),
         specifications: form.specifications.split('\n').map(s => s.trim()).filter(Boolean),
+        sizes: form.sizes.split(',').map(s => s.trim()).filter(Boolean),
         image: form.image, images: form.images
       };
       if (editingId) {
@@ -245,6 +246,9 @@ export default function AdminProducts() {
             </div>
             <div className="sm:col-span-2">
               <Field label="Specifications (format: Label: value, one per line)"><textarea className="input-field" rows={3} value={form.specifications} onChange={set('specifications')} /></Field>
+            </div>
+            <div className="sm:col-span-2">
+              <Field label="Sizes (comma separated, e.g: S, M, L, XL)"><input className="input-field" value={form.sizes} onChange={set('sizes')} placeholder="S, M, L, XL" /></Field>
             </div>
           </div>
 

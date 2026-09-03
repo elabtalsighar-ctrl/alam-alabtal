@@ -12,8 +12,8 @@ interface CartContextType {
   open: () => void;
   close: () => void;
   add: (item: CartItem) => void;
-  remove: (product_id: number) => void;
-  setQty: (product_id: number, qty: number) => void;
+  remove: (product_id: number, selected_size?: string) => void;
+  setQty: (product_id: number, qty: number, selected_size?: string) => void;
   clear: () => void;
 }
 
@@ -39,13 +39,17 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const count = items.reduce((s, i) => s + i.quantity, 0);
   const subtotal = items.reduce((s, i) => s + i.price * i.quantity, 0);
 
+  const itemKey = (i: { product_id: number; selected_size?: string }) =>
+    `${i.product_id}${i.selected_size ? '_' + i.selected_size : ''}`;
+
   const add = (item: CartItem) => {
     trackAddToCart({ name: item.name, product_id: item.product_id, price: item.price, quantity: item.quantity });
     setItems(prev => {
-      const existing = prev.find(i => i.product_id === item.product_id);
+      const key = itemKey(item);
+      const existing = prev.find(i => itemKey(i) === key);
       if (existing) {
         return prev.map(i =>
-          i.product_id === item.product_id
+          itemKey(i) === key
             ? { ...i, quantity: Math.min(i.quantity + item.quantity, i.stock) }
             : i
         );
@@ -54,17 +58,18 @@ export function CartProvider({ children }: { children: ReactNode }) {
     });
   };
 
-  const remove = (product_id: number) => {
-    setItems(prev => prev.filter(i => i.product_id !== product_id));
+  const remove = (product_id: number, selected_size?: string) => {
+    setItems(prev => prev.filter(i => !(i.product_id === product_id && i.selected_size === (selected_size || undefined))));
   };
 
-  const setQty = (product_id: number, qty: number) => {
+  const setQty = (product_id: number, qty: number, selected_size?: string) => {
     if (qty <= 0) {
-      remove(product_id);
+      remove(product_id, selected_size);
       return;
     }
+    const key = `${product_id}${selected_size ? '_' + selected_size : ''}`;
     setItems(prev =>
-      prev.map(i => (i.product_id === product_id ? { ...i, quantity: Math.min(qty, i.stock) } : i))
+      prev.map(i => (itemKey(i) === key ? { ...i, quantity: Math.min(qty, i.stock) } : i))
     );
   };
 

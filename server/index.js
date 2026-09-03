@@ -98,10 +98,15 @@ const upload = multer({
 
 // ---------- Public helpers ----------
 function publicProduct(p) {
+  let sizes = [];
+  if (p.sizes) {
+    try { sizes = JSON.parse(p.sizes); } catch { sizes = []; }
+  }
   return {
     ...p,
     specifications: p.specifications ? p.specifications.split('\n').filter(Boolean) : [],
-    features: p.features ? p.features.split('\n').filter(Boolean) : []
+    features: p.features ? p.features.split('\n').filter(Boolean) : [],
+    sizes
   };
 }
 
@@ -516,9 +521,9 @@ app.post('/api/products', requireAuth, requireAdmin, (req, res) => {
     const slug = slugify(p.name) + '-' + Date.now().toString(36);
     const info = db.prepare(`
       INSERT INTO products (name, slug, short_description, description, price, old_price, stock, category_id,
-        recommended_age, is_new, is_bestseller, is_featured, enabled, image, keywords, specifications, features)
+        recommended_age, is_new, is_bestseller, is_featured, enabled, image, keywords, specifications, features, sizes)
       VALUES (@name, @slug, @short, @description, @price, @old_price, @stock, @category_id,
-        @recommended_age, @is_new, @is_bestseller, @is_featured, @enabled, @image, @keywords, @specifications, @features)
+        @recommended_age, @is_new, @is_bestseller, @is_featured, @enabled, @image, @keywords, @specifications, @features, @sizes)
     `).run({
       name: p.name, slug, short: p.short_description || '', description: p.description || '',
       price: Number(p.price) || 0, old_price: p.old_price ? Number(p.old_price) : null,
@@ -526,7 +531,8 @@ app.post('/api/products', requireAuth, requireAdmin, (req, res) => {
       recommended_age: p.recommended_age || '', is_new: p.is_new ? 1 : 0, is_bestseller: p.is_bestseller ? 1 : 0,
       is_featured: p.is_featured ? 1 : 0, enabled: p.enabled === undefined ? 1 : (p.enabled ? 1 : 0),
       image: p.image || '', keywords: p.keywords || '',
-      specifications: (p.specifications || []).join('\n'), features: (p.features || []).join('\n')
+      specifications: (p.specifications || []).join('\n'), features: (p.features || []).join('\n'),
+      sizes: Array.isArray(p.sizes) ? JSON.stringify(p.sizes) : (p.sizes || '')
     });
     const id = info.lastInsertRowid;
     if (Array.isArray(p.images)) {
@@ -550,7 +556,7 @@ app.put('/api/products/:id', requireAuth, requireAdmin, (req, res) => {
         price = @price, old_price = @old_price, stock = @stock, category_id = @category_id,
         recommended_age = @recommended_age, is_new = @is_new, is_bestseller = @is_bestseller,
         is_featured = @is_featured, enabled = @enabled, image = @image, keywords = @keywords,
-        specifications = @specifications, features = @features
+        specifications = @specifications, features = @features, sizes = @sizes
       WHERE id = @id
     `).run({
       id: existing.id, name: p.name ?? existing.name, short: p.short_description ?? existing.short_description,
@@ -563,7 +569,8 @@ app.put('/api/products/:id', requireAuth, requireAdmin, (req, res) => {
       enabled: p.enabled === undefined ? existing.enabled : (p.enabled ? 1 : 0),
       image: p.image ?? existing.image, keywords: p.keywords ?? existing.keywords,
       specifications: Array.isArray(p.specifications) ? p.specifications.join('\n') : (p.specifications ?? existing.specifications),
-      features: Array.isArray(p.features) ? p.features.join('\n') : (p.features ?? existing.features)
+      features: Array.isArray(p.features) ? p.features.join('\n') : (p.features ?? existing.features),
+      sizes: Array.isArray(p.sizes) ? JSON.stringify(p.sizes) : (p.sizes !== undefined ? p.sizes : existing.sizes)
     });
     if (Array.isArray(p.images)) {
       db.prepare('DELETE FROM product_images WHERE product_id = ?').run(existing.id);
@@ -619,7 +626,7 @@ app.post('/api/orders', orderLimiter, async (req, res) => {
         const product = db.prepare('SELECT price FROM products WHERE id = ?').get(item.product_id);
         if (product) price = product.price;
       }
-      verifiedItems.push({ ...item, product_name: name, quantity: qty, unit_price: price });
+      verifiedItems.push({ ...item, product_name: name, quantity: qty, unit_price: price, selected_size: item.selected_size || null });
     }
 
     const settings = getSettings();

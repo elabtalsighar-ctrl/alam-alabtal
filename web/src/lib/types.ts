@@ -30,6 +30,7 @@ export interface Product {
   specifications: string[];
   features: string[];
   images?: string[];
+  sizes?: string[];
   is_low_stock?: number;
   created_at?: string;
 }
@@ -43,6 +44,7 @@ export interface CartItem {
   image: string;
   slug: string;
   stock: number;
+  selected_size?: string;
 }
 
 export interface OrderItem {

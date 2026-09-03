@@ -42,7 +42,7 @@ export default function CartDrawer() {
           <>
             <div className="flex-1 space-y-4 overflow-y-auto p-5">
               {items.map(item => (
-                <div key={item.product_id} className="flex gap-3 rounded-xl border border-slate-100 p-3">
+                <div key={`${item.product_id}${item.selected_size || ''}`} className="flex gap-3 rounded-xl border border-slate-100 p-3">
                   <img
                     src={item.image || ''}
                     alt={item.name}
@@ -52,17 +52,20 @@ export default function CartDrawer() {
                   <div className="flex flex-1 flex-col">
                     <div className="flex items-start justify-between gap-2">
                       <p className="text-sm font-bold text-slate-800">{item.name}</p>
-                      <button onClick={() => remove(item.product_id)} aria-label="إزالة" className="text-slate-300 hover:text-berry-500">
+                      <button onClick={() => remove(item.product_id, item.selected_size)} aria-label="إزالة" className="text-slate-300 hover:text-berry-500">
                         <TrashIcon size={18} />
                       </button>
                     </div>
+                    {item.selected_size && (
+                      <p className="mt-0.5 text-xs font-bold text-brand-600">المقاس: {item.selected_size}</p>
+                    )}
                     <p className="mt-1 text-sm font-extrabold text-brand-600">{formatPrice(item.price)}</p>
                     {item.old_price && item.old_price > item.price && (
                       <p className="text-xs text-slate-400 line-through">{formatPrice(item.old_price)}</p>
                     )}
                     <div className="mt-2 flex items-center gap-3">
                       <button
-                        onClick={() => setQty(item.product_id, item.quantity - 1)}
+                        onClick={() => setQty(item.product_id, item.quantity - 1, item.selected_size)}
                         className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50"
                         aria-label="تقليل الكمية"
                       >
@@ -70,7 +73,7 @@ export default function CartDrawer() {
                       </button>
                       <span className="w-8 text-center text-sm font-bold">{item.quantity}</span>
                       <button
-                        onClick={() => setQty(item.product_id, item.quantity + 1)}
+                        onClick={() => setQty(item.product_id, item.quantity + 1, item.selected_size)}
                         disabled={item.quantity >= item.stock}
                         className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-40"
                         aria-label="زيادة الكمية"

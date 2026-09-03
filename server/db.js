@@ -51,6 +51,7 @@ CREATE TABLE IF NOT EXISTS products (
   keywords TEXT DEFAULT '',
   specifications TEXT DEFAULT '',
   features TEXT DEFAULT '',
+  sizes TEXT DEFAULT '',
   created_at TEXT DEFAULT (datetime('now')),
   FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE SET NULL
 );
@@ -131,6 +132,9 @@ CREATE TABLE IF NOT EXISTS settings (
   value TEXT
 );
 `);
+
+// Migration: add sizes column if missing
+try { db.exec(`ALTER TABLE products ADD COLUMN sizes TEXT DEFAULT ''`); } catch {}
 
 const DEFAULT_SETTINGS = {
   store_name: 'عالم الأبطال الصغار',

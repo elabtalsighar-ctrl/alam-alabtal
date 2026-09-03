@@ -120,12 +120,16 @@ export default function AdminOrders() {
                     <div>
                       <h3 className="mb-2 text-sm font-extrabold text-slate-700">Items</h3>
                       <div className="space-y-2">
-                        {o.items.map((it, i) => (
+                        {o.items.map((it, i) => {
+                          let size = '';
+                          try { const snap = JSON.parse((it as any).product_snapshot || '{}'); size = snap.selected_size || ''; } catch {}
+                          return (
                           <div key={i} className="flex items-center justify-between rounded-lg bg-slate-50 p-2 text-sm">
-                            <span className="text-slate-700">{it.product_name} × {it.quantity}</span>
+                            <span className="text-slate-700">{it.product_name}{size ? ` (${size})` : ''} × {it.quantity}</span>
                             <span className="font-bold text-slate-800">{formatPrice(it.unit_price * it.quantity)}</span>
                           </div>
-                        ))}
+                          );
+                        })}
                       </div>
                       <div className="mt-2 space-y-1 border-t border-slate-100 pt-2 text-sm">
                         <div className="flex justify-between text-slate-500"><span>Subtotal</span><span>{formatPrice(o.items_total)}</span></div>

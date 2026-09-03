@@ -82,6 +82,7 @@ export default function OrderSuccess() {
                   {it.image && <img src={it.image} alt={it.name} className="h-12 w-12 rounded-lg object-cover" />}
                   <div className="flex-1 text-right">
                     <p className="text-sm font-bold text-slate-800">{it.name}</p>
+                    {it.selected_size && <p className="text-xs font-bold text-brand-600">المقاس: {it.selected_size}</p>}
                     <p className="text-xs text-slate-500">الكمية: {it.quantity}</p>
                   </div>
                   <span className="text-sm font-bold">{formatPrice(it.price * it.quantity)}</span>
