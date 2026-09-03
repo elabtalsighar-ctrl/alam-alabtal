@@ -504,7 +504,8 @@ app.post('/api/products', requireAuth, requireAdmin, (req, res) => {
       const ins = db.prepare('INSERT INTO product_images (product_id, image, sort_order) VALUES (?, ?, ?)');
       p.images.forEach((img, i) => ins.run(id, img, i));
     }
-    res.json(db.prepare('SELECT * FROM products WHERE id = ?').get(id));
+    const created = db.prepare(productQuery() + ' WHERE p.id = ?').get(id);
+    res.json(productWithImages(created));
   } catch {
     res.status(500).json({ error: 'حدث خطأ، حاول مرة أخرى.' });
   }
@@ -540,7 +541,8 @@ app.put('/api/products/:id', requireAuth, requireAdmin, (req, res) => {
       const ins = db.prepare('INSERT INTO product_images (product_id, image, sort_order) VALUES (?, ?, ?)');
       p.images.forEach((img, i) => ins.run(existing.id, img, i));
     }
-    res.json(db.prepare('SELECT * FROM products WHERE id = ?').get(existing.id));
+    const updated = db.prepare(productQuery() + ' WHERE p.id = ?').get(existing.id);
+    res.json(productWithImages(updated));
   } catch {
     res.status(500).json({ error: 'حدث خطأ، حاول مرة أخرى.' });
   }
