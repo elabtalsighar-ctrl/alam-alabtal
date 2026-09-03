@@ -1,5 +1,4 @@
 #!/bin/sh
-set -e
 
 DB_PATH="/app/server/data/alam.db"
 

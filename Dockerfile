@@ -5,12 +5,12 @@ RUN npm ci
 COPY web/ ./
 RUN npm run build
 
-FROM node:20-alpine
-RUN apk add --no-cache python3 make g++ wget
+FROM node:20-slim
+RUN apt-get update && apt-get install -y --no-install-recommends python3 make g++ wget && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 
 # Install Litestream
-RUN wget -q https://github.com/benbjohnson/litestream/releases/download/v0.3.13/litestream-linux-amd64-musl.tar.gz -O /tmp/litestream.tar.gz && \
+RUN wget -q https://github.com/benbjohnson/litestream/releases/download/v0.3.13/litestream-v0.3.13-linux-amd64.tar.gz -O /tmp/litestream.tar.gz && \
     tar -xzf /tmp/litestream.tar.gz -C /usr/local/bin litestream && \
     rm /tmp/litestream.tar.gz
 
