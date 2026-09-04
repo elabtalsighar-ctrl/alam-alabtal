@@ -3,15 +3,15 @@ const { Pool } = pg;
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: process.env.DATABASE_URL ? { rejectUnauthorized: false } : false,
-  connectionTimeoutMillis: 10000
+  ssl: { rejectUnauthorized: false },
+  connectionTimeoutMillis: 15000
 });
 
 pool.on('error', err => {
   console.error('[DB] Pool error:', err.message);
 });
 
-console.log('[DB] Pool created, DATABASE_URL:', process.env.DATABASE_URL ? 'set (' + process.env.DATABASE_URL.split('@')[1] + ')' : 'NOT SET');
+console.log('[DB] Pool created, DATABASE_URL host:', process.env.DATABASE_URL ? process.env.DATABASE_URL.split('@')[1]?.split(':')[0] : 'NOT SET');
 
 export { pool };
 
