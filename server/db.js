@@ -1,7 +1,7 @@
 import postgres from 'postgres';
 
 const sql = postgres(process.env.DATABASE_URL, {
-  ssl: 'require',
+  ssl: { rejectUnauthorized: false },
   transform: { undefined: null },
   connection: { timeout: 15000 }
 });
