@@ -906,6 +906,16 @@ if (fs.existsSync(path.join(webDist, 'index.html'))) {
   });
 }
 
+app.get('/api/health', async (req, res) => {
+  try {
+    const r = await dbGet('SELECT NOW() as now');
+    const tables = await dbGet("SELECT COUNT(*) as count FROM information_schema.tables WHERE table_schema = 'public'");
+    res.json({ ok: true, time: r?.now, tables: tables?.count, dbUrl: process.env.DATABASE_URL ? 'set' : 'missing' });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message, dbUrl: process.env.DATABASE_URL ? 'set' : 'missing' });
+  }
+});
+
 app.use((err, req, res, next) => {
   if (err) return res.status(400).json({ error: 'حدث خطأ، حاول مرة أخرى.' });
   next();
