@@ -1,16 +1,14 @@
 import pg from 'pg';
+import tls from 'node:tls';
+
 const { Pool } = pg;
 
-const poolConfig = {
+pg.defaults.ssl = { rejectUnauthorized: false };
+
+const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   connectionTimeoutMillis: 15000
-};
-
-if (process.env.DATABASE_URL && !process.env.DATABASE_URL.includes('sslmode=')) {
-  poolConfig.ssl = { rejectUnauthorized: false };
-}
-
-const pool = new Pool(poolConfig);
+});
 
 pool.on('error', err => {
   console.error('[DB] Pool error:', err.message);
