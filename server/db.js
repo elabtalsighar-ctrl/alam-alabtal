@@ -1,11 +1,16 @@
 import pg from 'pg';
 const { Pool } = pg;
 
-const pool = new Pool({
+const poolConfig = {
   connectionString: process.env.DATABASE_URL,
-  ssl: { rejectUnauthorized: false },
   connectionTimeoutMillis: 15000
-});
+};
+
+if (process.env.DATABASE_URL && !process.env.DATABASE_URL.includes('sslmode=')) {
+  poolConfig.ssl = { rejectUnauthorized: false };
+}
+
+const pool = new Pool(poolConfig);
 
 pool.on('error', err => {
   console.error('[DB] Pool error:', err.message);
