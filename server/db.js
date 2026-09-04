@@ -1,12 +1,11 @@
+process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
+
 import pg from 'pg';
-import tls from 'node:tls';
-
 const { Pool } = pg;
-
-pg.defaults.ssl = { rejectUnauthorized: false };
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
+  ssl: { rejectUnauthorized: false },
   connectionTimeoutMillis: 15000
 });
 
