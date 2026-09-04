@@ -1,7 +1,7 @@
-import { getSettings } from './db.js';
+import { getSettings, dbGet, dbAll, dbRun } from './db.js';
 
-function getConfig() {
-  const s = getSettings();
+async function getConfig() {
+  const s = await getSettings();
   return {
     enabled: s.ecotrack_enabled === '1',
     token: (s.ecotrack_token || '').trim(),
@@ -15,11 +15,10 @@ function wilayaCode(wilayaStr) {
 }
 
 export async function pushOrderToEcotrack(order) {
-  const { enabled, token, baseUrl } = getConfig();
+  const { enabled, token, baseUrl } = await getConfig();
   if (!enabled || !token) return { skipped: true, reason: 'disabled or no token' };
 
-  const { db } = await import('./db.js');
-  const items = db.prepare('SELECT * FROM order_items WHERE order_id = ?').all(order.id);
+  const items = await dbAll('SELECT * FROM order_items WHERE order_id = $1', [order.id]);
   const itemsDesc = items.map(i => `${i.product_name} x${i.quantity}`).join(', ');
 
   async function doCreate(communeToUse) {
@@ -47,16 +46,14 @@ export async function pushOrderToEcotrack(order) {
   }
 
   try {
-  // Try with original commune first
   let { r, text, json } = await doCreate(order.commune || '');
   if (json && json.success) {
     const tracking = json.tracking || json.reference || '';
     try {
-      db.prepare('UPDATE orders SET ecotrack_id = ?, ecotrack_tracking = ? WHERE id = ?').run(String(tracking || ''), String(tracking || ''), order.id);
+      await dbRun('UPDATE orders SET ecotrack_id = $1, ecotrack_tracking = $2 WHERE id = $3', [String(tracking || ''), String(tracking || ''), order.id]);
     } catch {}
     return { ok: true, tracking, response: json };
   }
-  // If commune error, try fallback commune for this wilaya
   const isCommuneError = text.includes('Commune') && r.status === 422;
   if (isCommuneError) {
     try {
@@ -73,7 +70,7 @@ export async function pushOrderToEcotrack(order) {
         if (retry.json && retry.json.success) {
           const tracking = retry.json.tracking || retry.json.reference || '';
           try {
-            db.prepare('UPDATE orders SET ecotrack_id = ?, ecotrack_tracking = ?, commune = ? WHERE id = ?').run(String(tracking || ''), String(tracking || ''), fallback, order.id);
+            await dbRun('UPDATE orders SET ecotrack_id = $1, ecotrack_tracking = $2, commune = $3 WHERE id = $4', [String(tracking || ''), String(tracking || ''), fallback, order.id]);
           } catch {}
           return { ok: true, tracking, response: retry.json, fallbackCommune: fallback };
         }
@@ -93,7 +90,7 @@ export async function pushOrderToEcotrack(order) {
 }
 
 export async function testEcotrackConnection() {
-  const { token, baseUrl } = getConfig();
+  const { token, baseUrl } = await getConfig();
   if (!token) return { ok: false, error: 'لم يتم ضبط Token' };
   const url = `${baseUrl}/api/v1/validate/token?api_token=${encodeURIComponent(token)}`;
   try {

@@ -34,7 +34,7 @@ if (!fs.existsSync(UPLOAD_DIR)) fs.mkdirSync(UPLOAD_DIR, { recursive: true });
 
 app.use(helmet({ contentSecurityPolicy: false }));
 app.use(cors({
-  origin: process.env.ALLOWED_ORIGIN || false,
+  origin: process.env.ALLOWED_ORIGINS || false,
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
@@ -914,9 +914,13 @@ app.use((err, req, res, next) => {
 app.listen(PORT, async () => {
   console.log(`Alam Al-Abtal Al-Sighar server running on http://localhost:${PORT}`);
 
-  await initDB();
-  const result = await seed();
-  console.log(`Seed: ${result}`);
+  try {
+    await initDB();
+    const result = await seed();
+    console.log(`Seed: ${result}`);
+  } catch (e) {
+    console.error('[STARTUP] DB init/seed failed:', e.message);
+  }
 
   if (!process.env.ADMIN_PASSWORD) {
     console.log('[WARNING] Set ADMIN_PASSWORD env var to change the default admin password.');
