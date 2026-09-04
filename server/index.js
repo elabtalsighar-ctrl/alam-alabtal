@@ -8,7 +8,7 @@ import { fileURLToPath } from 'node:url';
 import multer from 'multer';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
-import { sql, initDB, dbGet, dbAll, dbRun, getSettings, updateSettings } from './db.js';
+import { pool, initDB, dbGet, dbAll, dbRun, getSettings, updateSettings } from './db.js';
 import { seed, slugify } from './seed.js';
 import { pushOrderToEcotrack, testEcotrackConnection } from './ecotrack.js';
 import { v2 as cloudinary } from 'cloudinary';

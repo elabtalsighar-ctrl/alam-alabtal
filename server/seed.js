@@ -1,4 +1,4 @@
-import { sql, dbGet, dbAll, dbRun } from './db.js';
+import { pool, dbGet, dbAll, dbRun } from './db.js';
 import bcrypt from 'bcryptjs';
 
 export function slugify(text) {

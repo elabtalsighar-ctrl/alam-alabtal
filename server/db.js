@@ -1,31 +1,37 @@
-import postgres from 'postgres';
+import pg from 'pg';
+const { Pool } = pg;
 
-const sql = postgres(process.env.DATABASE_URL, {
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
   ssl: { rejectUnauthorized: false },
-  transform: { undefined: null },
-  connection: { timeout: 15000 }
+  connectionTimeoutMillis: 15000
 });
 
-console.log('[DB] postgres.js connected, DATABASE_URL host:', process.env.DATABASE_URL ? process.env.DATABASE_URL.split('@')[1]?.split(':')[0] : 'NOT SET');
+pool.on('error', err => {
+  console.error('[DB] Pool error:', err.message);
+});
 
-export { sql };
+console.log('[DB] Pool created, DATABASE_URL host:', process.env.DATABASE_URL ? process.env.DATABASE_URL.split('@')[1]?.split(':')[0] : 'NOT SET');
 
-export async function dbGet(sqlQuery, params = []) {
-  const rows = await sql.unsafe(sqlQuery, params);
-  return rows[0] || null;
+export { pool };
+
+export async function dbGet(sql, params = []) {
+  const result = await pool.query(sql, params);
+  return result.rows[0];
 }
 
-export async function dbAll(sqlQuery, params = []) {
-  return await sql.unsafe(sqlQuery, params);
+export async function dbAll(sql, params = []) {
+  const result = await pool.query(sql, params);
+  return result.rows;
 }
 
-export async function dbRun(sqlQuery, params = []) {
-  const rows = await sql.unsafe(sqlQuery, params);
-  return { id: rows[0]?.id, rowCount: rows.count || rows.length, rows };
+export async function dbRun(sql, params = []) {
+  const result = await pool.query(sql, params);
+  return { id: result.rows[0]?.id, rowCount: result.rowCount, rows: result.rows };
 }
 
 export async function initDB() {
-  await sql.unsafe(`
+  await pool.query(`
     CREATE TABLE IF NOT EXISTS users (
       id SERIAL PRIMARY KEY,
       email TEXT UNIQUE NOT NULL,
@@ -167,22 +173,22 @@ export async function initDB() {
   };
 
   for (const [key, value] of Object.entries(DEFAULT_SETTINGS)) {
-    await sql.unsafe('INSERT INTO settings (key, value) VALUES ($1, $2) ON CONFLICT (key) DO NOTHING', [key, String(value)]);
+    await pool.query('INSERT INTO settings (key, value) VALUES ($1, $2) ON CONFLICT (key) DO NOTHING', [key, String(value)]);
   }
   console.log('[DB] PostgreSQL initialized');
 }
 
 export async function getSettings() {
-  const rows = await sql.unsafe('SELECT key, value FROM settings');
+  const result = await pool.query('SELECT key, value FROM settings');
   const out = {};
-  for (const row of rows) out[row.key] = row.value;
+  for (const row of result.rows) out[row.key] = row.value;
   return out;
 }
 
 export async function updateSettings(patch) {
   for (const [key, value] of Object.entries(patch)) {
     if (value !== undefined) {
-      await sql.unsafe('INSERT INTO settings (key, value) VALUES ($1, $2) ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value', [key, String(value)]);
+      await pool.query('INSERT INTO settings (key, value) VALUES ($1, $2) ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value', [key, String(value)]);
     }
   }
   return getSettings();

@@ -17,4 +17,4 @@ WORKDIR /app/server
 ENV NODE_ENV=production
 ENV PORT=10000
 EXPOSE 10000
-CMD ["node", "index.js"]
+CMD ["sh", "-c", "NODE_TLS_REJECT_UNAUTHORIZED=0 node index.js"]
