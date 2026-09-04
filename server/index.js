@@ -957,12 +957,12 @@ app.use((err, req, res, next) => {
 app.listen(PORT, async () => {
   console.log(`Alam Al-Abtal Al-Sighar server running on http://localhost:${PORT}`);
 
-  // Always seed (INSERT OR IGNORE - safe to run always)
+  // Restore DB from B2 FIRST (before seed) — if backup exists, it overwrites the empty DB
+  try { await restoreFromB2(); } catch {}
+
+  // Seed adds missing products (INSERT OR IGNORE — won't duplicate if restored from B2)
   const result = seed();
   console.log(`Seed: ${result}`);
-
-  // Restore DB from B2 backup if DB is empty (non-blocking)
-  restoreFromB2().catch(() => {});
 
   // Start auto-backup to B2 (every 30s)
   startAutoBackup();
